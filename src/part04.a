@@ -56,28 +56,28 @@ strtpr		clc
 		sta prints
 amper		ror printf
 endpri		jsr spaces
-		cmp #":"
+		cmp #':'
 		beq dedprc
 		cmp #$0d
 		beq dedprc
-		cmp #telse
+		cmp #< telse
 		bne contpr
 dedprc		jsr nline
 dedpr		jmp sunk
 prfuny		stz prints
 		stz printf
 		jsr spaces
-		cmp #":"
+		cmp #':'
 		beq dedpr
 		cmp #$0d
 		beq dedpr
-		cmp #telse
+		cmp #< telse
 		beq dedpr
-contpr		cmp #"~"
+contpr		cmp #'~'
 		beq amper
-		cmp #","
+		cmp #','
 		beq prcomm
-		cmp #";"
+		cmp #';'
 		beq prfuny
 		jsr prspec
 		bcc endpri
@@ -127,7 +127,7 @@ tab2		lda iaccl
 tab		jsr inexpr
 		jsr comchk
 		beq tab2
-		cmp #")"
+		cmp #')'
 		bne tabcom
 		lda iaccl
 		sbc tally;carry set by cmp
@@ -156,11 +156,11 @@ prspec		ldx line
 		stx aeline + 1
 		ldx cursor
 		stx aecur
-		cmp #"'"
+		cmp #'\''
 		beq prcr
-		cmp #ttab
+		cmp #< ttab
 		beq tab
-		cmp #tspc
+		cmp #< tspc
 		beq spc
 		sec
 prtsto		rts
@@ -271,7 +271,7 @@ renstr		lda txtp
 		sty work
 		rts
 renum		jsr gettwo
-		ldx #work + 2
+		ldx #< work + 2
 		jsr popx
 		jsr ender
 		jsr renset
@@ -327,9 +327,9 @@ numbe		ldy #1
 numbf		lda (line), y
 		ldx iaccn
 		bne numbfs
-		cmp #tconst
+		cmp #< tconst
 		beq numbg
-		cmp #trem
+		cmp #< trem
 		beq numbfx
 numbfs		iny
 		cmp #'"'
@@ -450,7 +450,7 @@ dimsp		dec cursor
 dimnxt		jsr chkcom
 		beq dim
 		jmp sunk
-smul		ldx #work + 8
+smul		ldx #< work + 8
 		jsr popx
 wmul		ldx #0
 		ldy #0
@@ -498,17 +498,17 @@ dimnno		sbc #0
 		jsr word
 		cpy #1
 		beq notgo
-		cmp #"("
+		cmp #'('
 		beq dimvar
-		cmp #"$"
+		cmp #'$'
 		beq dimint
-		cmp #"%"
+		cmp #'%'
 		bne dimspa
 dimint		dec work + 8
 		iny
 		inx
 		lda (work), y
-		cmp #"("
+		cmp #'('
 		beq dimvar
 dimspa		jmp dimsp
 dimvar		iny
@@ -542,7 +542,7 @@ rdloop		jsr phacc
 		jsr smul
 		jsr chkcom
 		beq rdloop
-		cmp #")"
+		cmp #')'
 		bne dimgon;warning NE status used again
 		plx
 		pla
@@ -619,9 +619,9 @@ clear		jsr done
 		bra lpagex
 trace		jsr sptstn
 		bcs tracnm
-		cmp #ton
+		cmp #< ton
 		beq tracon
-		cmp #toff
+		cmp #< toff
 		beq tracof
 		jsr asexpr
 tracnm		jsr done
@@ -642,11 +642,11 @@ tracof		inc cursor
 		bra tracnn
 ltime		iny
 		lda (line), y
-		cmp #"$"
+		cmp #'$'
 		beq ltimed
 		jsr ineqex
 		stz iaccl + 4
-		ldx #iaccl
+		ldx #< iaccl
 		ldy #0
 		lda #2
 ltimex		jmp oswnxt
@@ -657,7 +657,7 @@ ltimed		inc cursor
 		lda #$f;set time$
 		ldy clen
 		sty stracc - 1
-		ldx #< (stracc - 1)
+		ldx #< stracc - 1
 		ldy #> (stracc - 1)
 		bra ltimex
 stinbr		jsr phstr
@@ -694,7 +694,7 @@ proc		lda line
 		sta aeline + 1
 		lda cursor
 		sta aecur
-		lda #tproc
+		lda #< tproc
 		jsr fnbody
 		jsr aedone
 		jmp nxt
@@ -821,20 +821,20 @@ replop		lda (repptr), y
 vdup		lda iaccm
 		jsr oswrch
 vdu		jsr spaces
-vdul		cmp #":"
+vdul		cmp #':'
 		beq vdux
 		cmp #$0d
 		beq vdux
-		cmp #telse
+		cmp #< telse
 		beq vdux
 		dec cursor
 		jsr asexpr
 		jsr wriacc
 		jsr chkcom
 		beq vdu
-		cmp #";"
+		cmp #';'
 		beq vdup
-		cmp #"|"
+		cmp #'|'
 		bne vdul
 		lda #0
 		ldy #9

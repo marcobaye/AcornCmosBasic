@@ -21,21 +21,21 @@ setcof		sta argp
 		lda #> hpihi
 		sta argp + 1
 		rts
-arga		lda #<fwsa
+arga		lda #< fwsa
 argcom		sta argp
 		lda #> fwsd
 		sta argp + 1
 		rts
 tan		jsr frange
-		lda #<fwsd
+		lda #< fwsd
 		jsr fstap
 		jsr fsc
-		lda #<fwsc
+		lda #< fwsc
 		jsr fstap
-		lda #<fwsd
+		lda #< fwsd
 		jsr fldarg
 		jsr fsc - 2;INC FQUAD first
-acdiv		lda #<fwsc
+acdiv		lda #< fwsc
 		jsr argcom
 		jsr fxdiv
 		lda #$ff
@@ -88,7 +88,7 @@ fdivb		sta faccx
 		lda fwrkma
 		ldx #8
 		bra fdive + 2
-fdivn		stx ftmpma + 1, y	; FIXME - force zeropage?
+fdivn		stx ftmpma + 1, y
 		ldx fdivt, y
 		sty fwrkx
 fdive		bcs fdivh
@@ -539,14 +539,14 @@ frange		jsr fltfac
 		ora iaccn
 		beq frngd;FIX(A/(PI/2))=0 (only 3 bytes significant)
 		jsr iflt + 4;float knowing faccmg, faccxh clear
-		lda #<fwsb
+		lda #< fwsb
 		jsr fstap
 		lda #< hpihi
 		jsr cx
 		jsr arga
 		jsr fadd
 		jsr fsta
-		lda #<fwsb
+		lda #< fwsb
 		jsr fldarg
 		lda #< hpilo
 		jsr cx
@@ -560,7 +560,7 @@ fsccom		jsr stargc
 		lda #< fatanc - 5
 		ldy #((fatanc - fsinc) / 5 - 3) / 2
 		jsr fcf;EVALUATE APPROXIMATION X*(SIN(X)/X)
-acmul		lda #<fwsc
+acmul		lda #< fwsc
 		ldy #> fwsc;multiply by any fws at ACMUL+2
 		sty argp + 1;multiply by anything in AY at ACMUL+4
 		sta argp

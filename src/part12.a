@@ -61,7 +61,7 @@ inout		pla
 		bra inpuhz
 input		jsr chkhsh
 		beq inputh
-		cmp #tline
+		cmp #< tline
 		beq inlin
 		dec cursor
 		clc
@@ -80,9 +80,9 @@ inphp		php
 		asl coefp
 		plp
 		ror coefp
-		cmp #","
+		cmp #','
 		beq inplp
-		cmp #";"
+		cmp #';'
 		beq inplp
 		dec cursor
 		lda coefp
@@ -104,7 +104,7 @@ inphp		php
 		bne ingot
 inget		bit coefp
 		bpl ingeta
-		lda #"?"
+		lda #'?'
 		jsr oswrch
 ingeta		jsr inline
 		sty clen;A=0
@@ -139,11 +139,11 @@ restore		stz work + 6
 		sty work + 7
 		jsr spaces
 		dec cursor
-		cmp #":"
+		cmp #':'
 		beq resdon
 		cmp #$0d
 		beq resdon
-		cmp #telse
+		cmp #< telse
 		beq resdon
 		jsr gofact
 resdon		jsr done
@@ -183,7 +183,7 @@ datait		jsr ascur
 		stz aecur
 		jsr comchk
 		beq dataok
-		cmp #tdata
+		cmp #< tdata
 		beq dataok
 		cmp #$0d
 		beq datanx
@@ -200,9 +200,9 @@ datanx		ldy aecur
 		tax
 datans		iny
 		lda (aeline), y
-		cmp #" "
+		cmp #' '
 		beq datans
-		cmp #tdata
+		cmp #< tdata
 		beq dataol
 		txa
 		clc
@@ -219,10 +219,10 @@ nodos		brk
 	!tx "No " , trepeat
 channe		brk
 	!tx $2d
-	!tx $8d , "#"
+	!tx $8d , '#'
 dodp		brk
 	!tx $2c
-	!tx "Too many " , trepeat , "s"
+	!tx "Too many " , trepeat , 's'
 		brk
 dataol		iny
 		sty aecur
@@ -250,14 +250,14 @@ aechan		lda cursor
 		lda line + 1
 		sta aeline + 1
 chann		jsr aespac
-		cmp #"#"
+		cmp #'#'
 		bne channe
 		jsr intfac
 		ldy iaccl
 		tya
 		rts
 repeat		ldx dostkp
-		cpx #dotop
+		cpx #< dotop
 		bcs dodp
 		jsr clyadp
 		lda line
@@ -273,12 +273,12 @@ buffa		stz work;both stracc and buffer=0
 		sta work + 1
 		lda #$ee
 		sta work + 2
-		lda #" "
+		lda #' '
 		sta work + 3
 		ldy #$ff
 		sty work + 04
 		iny
-		ldx #work
+		ldx #< work
 		tya
 		jsr osword
 		bcc bufend
@@ -345,7 +345,7 @@ insrt		lda listop
 		beq insrts
 insrtl		lda buffer, y
 		iny
-		cmp #" "
+		cmp #' '
 		beq insrtl
 		dey
 insrts		sty work + 4
@@ -359,7 +359,7 @@ insrts		sty work + 4
 length		iny
 		cmp (work + 4), y
 		bne length
-		lda #" "
+		lda #' '
 tralsp		dey
 		beq tralex
 		cmp (work + 4), y
@@ -437,7 +437,7 @@ setfsa		lda top
 		sta lomem + 1
 		sta fsa + 1
 		jsr setvar
-setval		ldx #hpihi - vectab
+setval		ldx #< hpihi - vectab
 		lda vectab - 1, x
 		sta buffer + 256 - (hpihi - vectab) - 1, x
 		dex
@@ -623,7 +623,7 @@ popn		adc aestkp
 		bcc popaci
 		inc aestkp + 1
 popaci		rts
-popwrk		ldx #work
+popwrk		ldx #< work
 popx		ldy #3
 		lda (aestkp), y
 		sta 3, x
@@ -699,7 +699,7 @@ nocrlf		pla
 		inc tally
 		jmp ($20e)
 hexsp		jsr hexout
-listpt		lda #" "
+listpt		lda #' '
 chout		bit listop
 		bmi choutr
 		cmp #$0d;CHOUT+4 also an entry point
@@ -741,7 +741,7 @@ loader		jsr osthig
 		stz work + 6
 		ldy #0
 		lda #$ff
-		ldx #work
+		ldx #< work
 		jsr osfile
 ender		lda txtp
 		sta top + 1
@@ -814,7 +814,7 @@ save		jsr ender
 		stx work + 11
 		lda #0
 		tay
-		ldx #work
+		ldx #< work
 		jsr osfile
 		bra lptrx
 oscl		jsr osthif
@@ -831,7 +831,7 @@ lptr		lda #1
 		jsr eqexpr
 		jsr integ
 		ply
-		ldx #iaccl
+		ldx #< iaccl
 		pla
 		jsr osargs
 lptrx		jmp nxt
@@ -860,7 +860,7 @@ vstrlp		jsr getwk2
 		jmp (work)
 readbyte	lda #5
 		phx
-		ldx #iaccl
+		ldx #< iaccl
 		ldy #0
 		jsr osword
 		plx
@@ -949,4 +949,4 @@ zeend
 		brk
 		brk
 		brk
-	;end
+	!eof

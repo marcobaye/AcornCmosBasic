@@ -8,7 +8,7 @@ fnmiss		pla
 		sta line
 		brk
 	!tx $1d
-	!tx "No such " , tfn , "/" , tproc
+	!tx "No such " , tfn , '/' , tproc
 		brk
 fndef		lda txtp;WORK+2 has been set by LOOKFN
 		sta line + 1
@@ -19,9 +19,9 @@ fnfind		ldy #1
 		ldy #3
 fnfins		iny
 		lda (line), y
-		cmp #" "
+		cmp #' '
 		beq fnfins
-		cmp #tdef
+		cmp #< tdef
 		beq deffnd
 nexlin		ldy #3
 		lda (line), y
@@ -76,7 +76,7 @@ fncall		brk
 	!tx $1e
 	!tx "Bad call"
 		brk
-fn		lda #tfn
+fn		lda #< tfn
 fnbody		sta type
 		tsx
 		txa
@@ -131,7 +131,7 @@ fngo		lda #0
 		pha
 		stz cursor
 		jsr spaces
-		cmp #"("
+		cmp #'('
 		beq fnargs
 		dec cursor
 dofn		lda aecur
@@ -206,12 +206,12 @@ fnargs		lda aecur;hpush aeline
 		jsr retinf;bpush return info
 		jsr chkcom
 		beq fnargs
-		cmp #")"
+		cmp #')'
 		bne argmat
 		lda #0;hpush 0
 		pha
 		jsr aespac
-		cmp #"("
+		cmp #'('
 		bne argmat
 fnargp		jsr expr
 		jsr phtype;bpush val
@@ -223,7 +223,7 @@ fnargp		jsr expr
 		phx
 		jsr comchk
 		beq fnargp
-		cmp #")"
+		cmp #')'
 		bne argmat
 		pla
 		pla
@@ -252,7 +252,7 @@ fnargz		jsr popacc;bpull type
 		lda iacch
 		beq argmat
 		sta type
-		ldx #work
+		ldx #< work
 		jsr acctom
 		lda type
 		bpl fnarpo
@@ -274,7 +274,7 @@ fnargw		dec coefp
 retinf		ldy iaccn
 		cpy #5
 		bcs fninfo
-		ldx #work
+		ldx #< work
 		jsr acctom
 fninfo		jsr varind
 		php
@@ -282,7 +282,7 @@ fninfo		jsr varind
 		plp
 		beq fnstrd
 		bmi fnstrd
-		ldx #work
+		ldx #< work
 		jsr mtoacc
 fnstrd		jmp phacc
 varind		ldy iaccn

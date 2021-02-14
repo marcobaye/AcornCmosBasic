@@ -59,8 +59,8 @@ orderr		lda #< baserr
 		lda #> baserr
 		sta errorh + 1
 		rts
-baserr	!tx treport , ":" , tif , terl , tprint , "\" at line \";" , terl , ":" , tend
-	!tx telse , tprint , ":" , tend , 13
+baserr	!tx treport , ':' , tif , terl , tprint , "\" at line \";" , terl , ':' , tend
+	!tx telse , tprint , ':' , tend , 13
 beep		jsr asexpr
 		ldx #3
 beeplp		lda iaccl
@@ -99,7 +99,7 @@ envell		pla
 		dex
 		bpl envell
 		tya
-		ldx #work
+		ldx #< work
 		ldy #0
 oswnxt		jsr osword
 		bra widthx
@@ -190,17 +190,17 @@ nonuml		jsr chkcom
 		beq gotcx
 		dec cursor
 gotcx		jsr sptstn
-gotcff		ldx #faccma
+gotcff		ldx #< faccma
 		jsr acctom;MA,MB:=IL,IM
 		jsr spaces
-		cmp #tif
+		cmp #< tif
 		bne listef
 		jsr spaces
 		jsr clyadp
 		bra listeg
 list		iny
 		lda (line), y
-		cmp #"O";listo command ?
+		cmp #'O';listo command ?
 		bne listgo
 		inc cursor
 		jsr asexpr
@@ -240,7 +240,7 @@ limtst		lda iaccl
 		bcc lttest
 		bit listop
 		bpl listef - 3;exit normally if list
-		ldx #<goedit
+		ldx #< goedit
 		ldy #> goedit
 		jmp oscli
 lttest		stz coefp
@@ -257,7 +257,7 @@ lttest		stz coefp
 ltloop		lda (line), y
 		cmp #$0d
 		beq chklst
-		cmp #trem
+		cmp #< trem
 		beq ltlook
 		cmp #'"'
 		bne ltloom
@@ -265,10 +265,10 @@ ltloop		lda (line), y
 ltlook		sta coefp;flip the look at tokens for FOR,REPEAT status
 ltloom		ldx coefp
 		bne lpsimt;check if looking at tokens
-		cmp #tnext
+		cmp #< tnext
 		bne lpsimr
 		dec work + 4
-lpsimr		cmp #tuntil
+lpsimr		cmp #< tuntil
 		bne lpsimt
 		dec work + 5
 lpsimt		ldx aeline
@@ -313,19 +313,19 @@ lpquot		jsr chout
 		bra lp
 lptoks		ldx coefp
 		bne lpquot
-		cmp #tconst
+		cmp #< tconst
 		bne lpsimp
 		jsr spgetn
 		sty cursor
 		jsr posite
 		bra lpx
-lpsimp		cmp #tfor
+lpsimp		cmp #< tfor
 		bne lpsimq
 		inc work + 4
-lpsimq		cmp #trepeat
+lpsimq		cmp #< trepeat
 		bne lpsims
 		inc work + 5
-lpsims		cmp #trem
+lpsims		cmp #< trem
 		bne lpsimz
 		sta coefp;make sure that no more tokens on line will be listed
 lpsimz		jsr tokout
@@ -456,7 +456,7 @@ forcv		brk
 	!tx tfor , " variable"
 fordp		brk
 	!tx $23
-	!tx "Too many " , tfor , "s"
+	!tx "Too many " , tfor , 's'
 forto		brk
 	!tx $24
 	!tx "No " , tto
@@ -468,10 +468,10 @@ for		jsr craelv
 		jsr eqeat
 		jsr stexpr
 		jsr aespac
-		cmp #tto
+		cmp #< tto
 		bne forto
 		ldy forstp
-		cpy #fortop
+		cpy #< fortop
 		bcs fordp
 		tya
 		adc #$0f;carry clear
@@ -497,7 +497,7 @@ for		jsr craelv
 		lda #1
 		jsr sinstk
 		jsr aespac
-		cmp #tstep
+		cmp #< tstep
 		bne forstw
 		jsr inexpr
 		ldy aecur
@@ -529,7 +529,7 @@ ffor		jsr expr
 		jsr fsta
 		jsr fone
 		jsr aespac
-		cmp #tstep
+		cmp #< tstep
 		bne fforst
 		jsr expr
 		jsr floati
@@ -546,7 +546,7 @@ fforst		sty cursor
 gosub		jsr gofact
 ongosb		jsr done
 		ldy substp
-		cpy #subtop
+		cpy #< subtop
 		bcs gosdp
 		lda line
 		sta subadl, y
@@ -556,7 +556,7 @@ ongosb		jsr done
 		bra godone
 gosdp		brk
 	!tx $25
-	!tx "Too many " , tgosub , "s"
+	!tx "Too many " , tgosub , 's'
 retnun		brk
 	!tx $26
 	!tx "No " , tgosub
@@ -586,7 +586,7 @@ onergf		jsr done
 		jsr orderr
 		bra returx
 onerrg		jsr spaces
-		cmp #toff
+		cmp #< toff
 		beq onergf
 		ldy cursor
 		dey
@@ -598,16 +598,16 @@ onerrg		jsr spaces
 		sta errorh + 1
 		jmp rem
 on		jsr spaces
-		cmp #terror
+		cmp #< terror
 		beq onerrg
 		dec cursor
 		jsr asexpr
-		cpx #tproc
+		cpx #< tproc
 		beq onok
 		iny
-		cpx #tgoto
+		cpx #< tgoto
 		beq onok
-		cpx #tgosub
+		cpx #< tgosub
 		bne oner
 onok		phx
 		lda iaccm
@@ -621,9 +621,9 @@ onok		phx
 onsrch		lda (line), y
 		cmp #$0d
 		beq onrg
-		cmp #":"
+		cmp #':'
 		beq onrg
-		cmp #telse
+		cmp #< telse
 		beq onrg
 		iny
 		cmp #'"'
@@ -632,23 +632,23 @@ onsrch		lda (line), y
 		sta iaccm
 onsrcc		ldx iaccm
 		bne onsrch;don't look inside string
-		cmp #")"
+		cmp #')'
 		bne onsrca
 		dec iaccn
-onsrca		cmp #"("
+onsrca		cmp #'('
 		bne onsrcb
 		inc iaccn
-onsrcb		cmp #","
+onsrcb		cmp #','
 		bne onsrch
 		ldx iaccn
 		bne onsrch
 		dec iaccl
 		bne onsrch
 ongot		pla
-		cmp #tproc
+		cmp #< tproc
 		beq onproc
 		sty cursor
-		cmp #tgosub
+		cmp #< tgosub
 		beq ongos
 		jsr gofact
 		jsr secur
@@ -660,7 +660,7 @@ ongos		jsr gofact
 onrg		pla
 onelse		lda (line), y
 		iny
-		cmp #telse
+		cmp #< telse
 		beq onels
 		cmp #$0d
 		bne onelse
@@ -676,7 +676,7 @@ noline		brk
 		brk
 onproc		sty aecur
 		jsr aespac
-		cmp #tproc
+		cmp #< tproc
 		bne oner
 		jsr fnbody
 		ldy aecur
@@ -688,7 +688,7 @@ onskip		iny
 		lda (line), y;find end of ON stmt
 		cmp #$0d
 		beq skiped
-		cmp #":"
+		cmp #':'
 		bne onskip
 skiped		sty cursor
 		rts

@@ -146,7 +146,7 @@ entry		and seed + 4;A was 1 so test bottom bit
 		ora seed + 2
 		ora seed + 3
 		bne rndok
-		lda #"A"
+		lda #'A'
 		sta seed
 		eor #'R' xor 'A'
 		sta seed + 1
@@ -178,7 +178,7 @@ lookfn		sty work + 2
 		ldy #1
 		lda (work), y
 		ldy #$f6
-		cmp #tproc
+		cmp #< tproc
 		beq lookmn
 		ldy #$f8
 		bra lookmn
@@ -261,7 +261,7 @@ divop		jsr integy;divide with remainder
 		eor iacch
 		sta work
 		jsr abscom
-		ldx #work + 2
+		ldx #< work + 2
 		jsr popx
 		stz work + 6
 		stz work + 7

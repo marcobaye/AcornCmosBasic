@@ -390,7 +390,7 @@ stopasm		dec; a was 0
 		sta bytesm
 		jmp stmt
 casm		jsr spaces
-		eor #"]"
+		eor #']'
 		beq stopasm
 		jsr clyadp
 		dec cursor
@@ -433,7 +433,7 @@ rmovel		iny
 		bra rmovel
 lllll		ldx #10
 		lda (line)
-		cmp #"."
+		cmp #'.'
 		bne nolabl
 ltlabl		jsr tokout
 		dex
@@ -449,7 +449,7 @@ lablsp		iny
 		cmp (line), y
 		beq lablsp
 llll		lda (line), y
-		cmp #":"
+		cmp #':'
 		beq nocoda
 		cmp #$0d
 		beq nocod
@@ -463,13 +463,13 @@ nolist		ldy cursor
 		dey
 nola		iny
 		lda (line), y
-		cmp #":"
+		cmp #':'
 		beq nolb
 		cmp #$0d
 		bne nola
 nolb		jsr done + 2
 		lda (line)
-		cmp #":"
+		cmp #':'
 		beq casmj
 		lda line + 1
 		cmp #> buffer
@@ -489,13 +489,13 @@ setl		jsr craelv
 mneent		jsr spaces
 		ldy #0;number of bytes
 		stz work + 6
-		cmp #":"
+		cmp #':'
 		beq mmmm
 		cmp #$0d
 		beq mmmm
-		cmp #"\\"
+		cmp #'\\'
 		beq mmmm
-		cmp #"."
+		cmp #'.'
 		beq setl
 		dec cursor
 		ldx #3
@@ -503,7 +503,7 @@ rdlup		ldy cursor
 		inc cursor
 		lda (line), y
 		bmi rdslpt
-		cmp #" "
+		cmp #' '
 		beq rdout
 		ldy #5
 		asl
@@ -516,7 +516,7 @@ inlup		asl
 		bne inlup
 		dex
 		bne rdlup
-rdout		ldx #allops
+rdout		ldx #< allops
 		lda work + 6
 srchm		cmp mneml - 1, x
 		bne notgot
@@ -526,25 +526,25 @@ srchm		cmp mneml - 1, x
 notgot		dex
 		bne srchm
 assded		jmp stded
-rdslpt		ldx #branch + 1
-		cmp #tand
+rdslpt		ldx #< branch + 1
+		cmp #< tand
 		beq rdopgt
 		inx
-		cmp #teor
+		cmp #< teor
 		beq rdopgt
 		inx
-		cmp #tor
+		cmp #< tor
 		bne assded
 		inc cursor
 		iny
 		lda (line), y
 		and #$df
-		cmp #"A"
+		cmp #'A'
 		bne assded
 rdopgt		lda stcode - 1, x
 		sta opcode
 		ldy #1
-		cpx #implied + 1
+		cpx #< implied + 1
 		bcs ngpone
 mmmm		lda pc
 		sta work
@@ -579,7 +579,7 @@ mmmmlq		bcc mmmmpp
 mmmmpp		tya
 		bne mmmmlp
 mmmmrt		rts
-ngpone		cpx #branch + 1
+ngpone		cpx #< branch + 1
 		bcs ngptwo
 		jsr asexpr
 		clc
@@ -609,7 +609,7 @@ brstor		tay
 brsto		sty opcode + 1
 brst		ldy #2
 		jmp mmmm
-ngptwo		cpx #group1 + 1
+ngptwo		cpx #< group1 + 1
 		bcs ngpthr
 		jsr chkhsh
 		bne nothsh
@@ -621,14 +621,14 @@ byte		brk
 	!tx 2
 	!tx "Byte"
 		brk
-ngpthr		cpx #copsta + 1
+ngpthr		cpx #< copsta + 1
 		bne nopsta
 		jsr spaces;sta as others in group3 but for #
-nothsh		cmp #"("
+nothsh		cmp #'('
 		bne notind
 		jsr asexpr
 		jsr spaces
-		cmp #")"
+		cmp #')'
 		bne ininx
 		jsr plus10
 		jsr chkcom
@@ -637,15 +637,15 @@ nothsh		cmp #"("
 		bra indinx
 ininy		jsr spaces
 		and #$df
-		cmp #"Y"
+		cmp #'Y'
 		beq indinx
 		bra badind
-ininx		cmp #","
+ininx		cmp #','
 		bne badind
 		jsr chkx
 		bne badind
 		jsr spaces
-		cmp #")"
+		cmp #')'
 		beq indinx
 badind		brk
 	!tx 3
@@ -657,7 +657,7 @@ notind		jsr adexpr
 		jsr plus10
 		jsr chkx
 		beq optim
-		cmp #"Y"
+		cmp #'Y'
 		bne badind
 unopt		jsr plus8
 		jmp jsrb
@@ -665,11 +665,11 @@ optim		jsr plus4
 optima		lda iaccm
 		bne unopt
 		bra indinx + 2; BRA BRST really
-nopsta		cpx #decinc + 1
+nopsta		cpx #< decinc + 1
 		bcs ngpfr
 		jsr spaces
 		and #$df
-		cmp #"A"
+		cmp #'A'
 		beq accum
 notacc		jsr adexpr
 		jsr chkcom
@@ -683,7 +683,7 @@ accum		iny
 		jsr wordcq
 		bcs notacc
 		ldy #$1a - 4
-		cpx #aslror + 1
+		cpx #< aslror + 1
 		bcc accums
 		bne accumc
 		ldy #$3a - 4
@@ -691,7 +691,7 @@ accumc		sty opcode
 accums		jsr plus4
 		ldy #1
 		bra jsrc
-ngpfr		cpx #copclr + 1
+ngpfr		cpx #< copclr + 1
 		bcs notclr
 		jsr asexpr
 		ldy #3
@@ -712,9 +712,9 @@ clropt		phy
 		sta opcode
 clrops		ply
 		bra jsrc
-notclr		cpx #tsbtrb + 1
+notclr		cpx #< tsbtrb + 1
 		bcs ngpfv
-		cpx #cpxcpy + 1
+		cpx #< cpxcpy + 1
 		bcs trsb
 		jsr chkhsh
 		beq immedj
@@ -727,11 +727,11 @@ bit_		jsr chkhsh
 		sty opcode
 immedj		jmp immed
 ngpfv		beq bit_
-		cpx #jsrjmp
+		cpx #< jsrjmp
 		beq jsr_
 		bcs ngpsx
 		jsr spaces
-		cmp #"("
+		cmp #'('
 		beq jsra
 		dec cursor
 jsr_		jsr asexpr
@@ -741,24 +741,24 @@ jsra		jsr plus10
 		jsr plus10
 		jsr asexpr
 		jsr spaces
-		cmp #")"
+		cmp #')'
 		beq jsrb
-		cmp #","
+		cmp #','
 		bne badink
 		jsr plus10
 		jsr chkx
 		bne badink
 		jsr spaces
-		cmp #")"
+		cmp #')'
 		beq jsrb
 badink		jmp badind
-ngpsx		cpx #psuedo + 1
+ngpsx		cpx #< psuedo + 1
 		bcs option
 		lda work + 6
 		eor #1
 		and #$1f;get x or y value
 		pha
-		cpx #copsta + 1
+		cpx #< copsta + 1
 		bcs stxy
 		jsr chkhsh
 		bne ldxy
@@ -800,20 +800,20 @@ equbws		ldx #1
 		inc cursor
 		lda (line), y
 		and #$df
-		cmp #"B"
+		cmp #'B'
 		beq equb
 		inx
-		cmp #"W"
+		cmp #'W'
 		beq equb
 		ldx #4
-		cmp #"D"
+		cmp #'D'
 		beq equb
-		cmp #"S"
+		cmp #'S'
 		beq equs
 		jmp stded
 equb		phx
 		jsr asexpr
-		ldx #opcode
+		ldx #< opcode
 		jsr acctom
 		ply
 equsx		jmp mmmm
@@ -836,12 +836,12 @@ plus4		lda opcode
 		rts
 chkx		jsr spaces
 		and #$df
-		cmp #"X"
+		cmp #'X'
 		rts
 chkhsh		jsr spaces
-		cmp #"#"
+		cmp #'#'
 		rts
 chkcom		jsr spaces
-		cmp #","
+		cmp #','
 		rts
 	;!source cbas03

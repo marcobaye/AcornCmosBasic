@@ -118,9 +118,9 @@ aeexpr		lda line
 ;  If status is neq and plus then it returned a word.
 ;  If status is neq and minus then it returned an fp.
 expr		jsr ander
-exprq		cpx #tor
+exprq		cpx #< tor
 		beq or
-		cpx #teor
+		cpx #< teor
 		beq eor_
 		dec aecur
 		tay
@@ -149,7 +149,7 @@ eorlp		lda (aestkp), y
 phandr		jsr integy
 		jsr phacc
 ander		jsr relate
-anderq		cpx #tand
+anderq		cpx #< tand
 		beq and_
 		rts
 and_		jsr integy
@@ -166,13 +166,13 @@ andlp		lda (aestkp), y
 		lda #$40
 		bra anderq
 relate		jsr adder
-		cpx #"?"
+		cpx #'?'
 		bcs relatx
-		cpx #"<"
+		cpx #'<'
 		bcs relts
 relatx		rts
 relts		beq reltlt
-		cpx #">"
+		cpx #'>'
 		beq reltgt
 		tax;test equal
 		jsr compr + 1
@@ -187,9 +187,9 @@ fail		sty iaccl
 reltlt		tax
 		ldy aecur
 		lda (aeline), y
-		cmp #"="
+		cmp #'='
 		beq ltoreq
-		cmp #">"
+		cmp #'>'
 		beq nequal
 		jsr compr;test less than
 		bcc pass
@@ -206,7 +206,7 @@ nequal		inc aecur
 reltgt		tax
 		ldy aecur
 		lda (aeline), y
-		cmp #"="
+		cmp #'='
 		beq gtoreq
 		jsr compr;test greater than
 		beq fail
@@ -244,9 +244,9 @@ conlop		lda stracc - 1, y
 		lda #0
 		bra adderq
 adder		jsr term
-adderq		cpx #"+"
+adderq		cpx #'+'
 		beq plus
-		cpx #"-"
+		cpx #'-'
 		beq minus
 		rts
 plus		tay
@@ -379,7 +379,7 @@ times		tay
 		phy;Push IACCH
 		jsr abscom
 		stx type
-		ldx #work + 2
+		ldx #< work + 2
 		jsr acctom
 		jsr popacc
 		pla
@@ -418,7 +418,7 @@ nad		asl iaccl
 		stx work + 7
 		lda work
 		php
-remin		ldx #work + 6
+remin		ldx #< work + 6
 divin		jsr mtoacc
 		plp
 		bpl terma
@@ -428,13 +428,13 @@ terma		ldx type
 timesj		jmp times
 phterm		jsr phacc
 term		jsr power
-termq		cpx #"*"
+termq		cpx #'*'
 		beq timesj
-		cpx #"/"
+		cpx #'/'
 		beq divide
-		cpx #tmod
+		cpx #< tmod
 		beq remain
-		cpx #tdiv
+		cpx #< tdiv
 		beq intdiv
 		rts
 divide		tay
@@ -459,7 +459,7 @@ intdiv		jsr divop
 		rol work + 5
 		bit work
 		php
-		ldx #work + 2
+		ldx #< work + 2
 		bra divin
 phpow		jsr phacc
 power		jsr factor
@@ -467,11 +467,11 @@ powerb		pha
 powera		ldy aecur
 		inc aecur
 		lda (aeline), y
-		cmp #" "
+		cmp #' '
 		beq powera
 		tax
 		pla
-		cpx #"^"
+		cpx #'^'
 		beq pow
 		rts
 pow		tay
@@ -496,14 +496,14 @@ fpowe		jsr stargc
 		jsr flda
 		lda fquad
 		jsr fipow
-fpowc		lda #<fwsb
+fpowc		lda #< fwsb
 		jsr fstap
 		jsr popset
 		jsr flda
 		jsr flog
 		jsr acmul
 		jsr fexp
-		lda #<fwsb
+		lda #< fwsb
 		jsr acmul + 2;*ARGB
 fpowf		lda #$ff
 		bra powerb

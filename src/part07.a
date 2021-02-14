@@ -35,7 +35,7 @@ nothx		adc #$30
 		bpl hexp
 		rts
 fprta		bpl fprtc
-		lda #"-"
+		lda #'-'
 		stz faccs
 		jsr chtobf
 fprtc		lda faccx
@@ -72,7 +72,7 @@ fconfx		jsr ftst
 		bne fprta
 		lda work
 		bne fprthj
-		lda #"0"
+		lda #'0'
 		jmp chtobf
 fprthj		jmp fprthh
 fprtee		jsr fone
@@ -157,11 +157,11 @@ fprtkk		lda work
 		lda #1
 		cpy #$ff
 		bne fprtk;SET E FORMAT
-fprtkl		lda #"0"
+fprtkl		lda #'0'
 		jsr chtobf
-		lda #"."
+		lda #'.'
 		jsr chtobf
-		lda #"0"
+		lda #'0'
 fprtkm		inc fprtdx
 		beq fprtkn
 		jsr chtobf
@@ -171,7 +171,7 @@ fprtk		sta fprtwn
 fprti		jsr fprtnn
 		dec fprtwn
 		bne fprtl
-		lda #"."
+		lda #'.'
 		jsr chtobf
 fprtl		dec work + 1
 		bne fprti
@@ -183,19 +183,19 @@ fprtl		dec work + 1
 		ldy clen
 fprttz		dey
 		lda stracc, y;inspect for and remove trailing zeroes
-		cmp #"0"
+		cmp #'0'
 		beq fprttz
-		cmp #"."
+		cmp #'.'
 		beq fprtty
 		iny
 fprtty		sty clen
 		lda fprtdx
 		beq fprtx;EXPONENT=0
-fprttx		lda #"E"
+fprttx		lda #'E'
 		jsr chtobf
 		lda fprtdx
 		bpl fprtj
-		lda #"-"
+		lda #'-'
 		jsr chtobf
 		sec
 		lda #0
@@ -203,7 +203,7 @@ fprttx		lda #"E"
 fprtj		jsr iprt
 		lda work
 		beq fprtx
-		lda #" "
+		lda #' '
 		ldy fprtdx
 		bmi fprttw
 		jsr chtobf
@@ -272,7 +272,7 @@ iprta		inx
 		beq iprtb
 		jsr fprtdg
 iprtb		pla
-fprtdg		ora #"0"
+fprtdg		ora #'0'
 chtobf		phx
 		ldx clen
 		sta stracc, x
@@ -291,7 +291,7 @@ frdd		stz faccma
 		stz faccmg
 		stz frdddp;DECIMAL POINT FLAG
 		stz frdddx;DECIMAL EXPONENT
-		cmp #".";Y pointing to this character
+		cmp #'.';Y pointing to this character
 		beq frdddd;LEADING DECIMAL POINT
 		cmp #$3a
 		bcs frddxx
@@ -314,13 +314,13 @@ frdd		stz faccma
 		sta faccmg
 frddc		iny
 		lda (aeline), y
-		cmp #"."
+		cmp #'.'
 		bne frddd
 frdddd		lda frdddp;SEEN BEFORE?
 		bne frddq;SECOND ONE IS END OF NUMBER
 		inc frdddp;SET FLAG
 		bra frddc;GET MORE CHARS
-frddd		cmp #"E"
+frddd		cmp #'E'
 		beq frddex;START OF EXPONENT
 		cmp #$3a
 		bcs frddq
@@ -397,9 +397,9 @@ irddb		jsr irddc
 		rts
 irdd		iny
 		lda (aeline), y
-		cmp #"-"
+		cmp #'-'
 		beq irddb
-		cmp #"+"
+		cmp #'+'
 		bne irdda
 irddc		iny
 		lda (aeline), y
@@ -596,9 +596,9 @@ fldwz		tya
 		ora #$80
 fldwx		sta fwrkma
 		rts
-stargc		lda #<fwsc
+stargc		lda #< fwsc
 		bra fstap
-starga		lda #<fwsa
+starga		lda #< fwsa
 fstap		sta argp
 		lda #> fwsa
 		sta argp + 1
@@ -621,7 +621,7 @@ fsta		lda faccx
 		iny
 		sta (argp), y
 		rts
-ldarga		lda #<fwsa
+ldarga		lda #< fwsa
 fldarg		sta argp
 		lda #> fwsa
 		sta argp + 1

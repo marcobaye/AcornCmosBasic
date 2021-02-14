@@ -54,7 +54,7 @@ consty		pla;>32767 so can't be
 		sec
 		rts
 constx		dey
-		lda #tconst
+		lda #< tconst
 		jsr intok;keeps X
 		lda work
 		sta work + 2
@@ -77,7 +77,7 @@ consti		txa;insert constant, high in X, low in WORK+6
 		ora #$40
 		sta (work + 2), y
 		dey
-		lda #$c0 xor $ff
+		lda #< not $c0
 		trb work + 6
 		txa
 		and #$c0
@@ -92,17 +92,17 @@ wordcn		clc
 		rts
 wordcq		cmp #$7b;check if character in A is wordc
 		bcs wordcn
-		cmp #"_"
+		cmp #'_'
 		bcs wordcy
 		cmp #$5b
 		bcs wordcn
-		cmp #"A"
+		cmp #'A'
 		bcs wordcy
 numbcp		cmp #$3a
 		bcs wordcn
-		cmp #"0";bcs wordcy;bcc wordcn reduced somewhat!
+		cmp #'0';bcs wordcy;bcc wordcn reduced somewhat!
 wordcy		rts
-numbcq		cmp #"."
+numbcq		cmp #'.'
 		bne numbcp
 		rts
 getwrk		lda (work)
@@ -117,16 +117,16 @@ matchb		jsr nextch
 matcha		lda (work)
 		cmp #$0d
 		beq relrts;if ch='cr' end
-		cmp #" "
+		cmp #' '
 		beq matchb;if ch=' ' then nextch
-		cmp #"&"
+		cmp #'&'
 		bne cmatch;if ch='&' then
 matchc		jsr getwk2;repeat nextch
 		jsr numbcp;until ch<'0' or ch>'9' and ch <'A' or ch>'F'
 		bcs matchc
-		cmp #"A"
+		cmp #'A'
 		bcc matcha
-		cmp #"G"
+		cmp #'G'
 		bcc matchc;if carry set >="G" goto matcha, but ends up at cmatch anyway
 cmatch		cmp #'"'
 		bne dmatch;if ch='"' then
@@ -136,15 +136,15 @@ matchd		jsr getwk2;repeat nextch
 		cmp #$0d
 		bne matchd
 relrts		rts
-dmatch		cmp #":"
+dmatch		cmp #':'
 		bne matche;if ch=':'
 		jsr nextch
 match		stz mode
 matcev		stz consta
 		bra matcha;mode:=left;constant:=false;nextch;matcha
-matche		cmp #","
+matche		cmp #','
 		beq matchb;if ch=',' then nextch;matcha
-		cmp #"*"
+		cmp #'*'
 		bne fmatch;if ch='*'
 		lda mode
 		beq relrts;and mode=left then end
@@ -152,7 +152,7 @@ ymatch		ldx #$ff
 		stx mode;mode:=right
 		stz consta;const:=false
 		bra matchb
-fmatch		cmp #"."
+fmatch		cmp #'.'
 		beq matchz
 		jsr numbcp
 		bcc gmatch;if ch>="0"' and ch<='9'
@@ -175,9 +175,9 @@ matchg		lda (work);not found:- while wordcq
 		bcc matchy
 		jsr nextch;do nextch
 		bra matchg
-gmatch		cmp #"A";lookupword (optimised for none present words)
+gmatch		cmp #'A';lookupword (optimised for none present words)
 		bcc ymatch
-		cmp #"X"
+		cmp #'X'
 		bcs matchw
 		ldx #< tokens
 		stx work + 2
@@ -193,12 +193,12 @@ kmatch		iny
 		cmp (work), y
 		beq kmatch
 		lda (work), y
-		cmp #"."
+		cmp #'.'
 		beq abbrev
 jmatch		iny
 		lda (work + 2), y
 		bpl jmatch
-		cmp #twidth;last token in list
+		cmp #< twidth;last token in list
 		bne mmatch
 		bcs matchg
 abbrev		iny
@@ -232,7 +232,7 @@ omatch		txa;carry clear at OMATCH
 		bvc wmatch;if job and 64
 		ldx mode
 		bne wmatch;and mode=left
-		adc #tptr2 - $8f
+		adc #< tptr2 - $8f
 wmatch		dey
 		jsr intok
 		ldx #$ff
@@ -265,23 +265,23 @@ umatch		lsr
 aespac		ldy aecur;get next character from the aeline,aecur
 		inc aecur
 		lda (aeline), y
-		cmp #" "
+		cmp #' '
 		beq aespac
 aespar		rts
 spaces		ldy cursor;get next character from the line, cursor
 		inc cursor
 		lda (line), y
-		cmp #" "
+		cmp #' '
 		beq spaces
 comrts		rts
 comchk		jsr aespac;check for a , in aeline and give error if none
-		cmp #","
+		cmp #','
 		rts
 comeat		jsr comchk
 		beq comrts
 comerr		brk
 	!tx 5
-	!tx $8d , ","
+	!tx $8d , ','
 		brk
 chain		jsr loader
 		bra runner
@@ -319,7 +319,7 @@ entryl		dex
 		jsr readbyte
 		cmp #$0d
 		beq format
-		cmp #"@"
+		cmp #'@'
 		bne entryl
 		jsr readbyte
 		cmp #$0d
@@ -356,7 +356,7 @@ clrstk		ldy #> buffer
 		sty line + 1
 		stz line;BUFFER=0
 		jsr orderr
-		lda #">"
+		lda #'>'
 		jsr oswrch
 		jsr buff
 runthg		ldx #$ff
@@ -405,31 +405,31 @@ setexj		jmp setext
 otstmt		ldy cursor
 		dey
 		lda (line), y
-		cmp #"*"
+		cmp #'*'
 		beq dos
-		cmp #"["
+		cmp #'['
 		beq ass
-		cmp #text
+		cmp #< text
 		beq setexj
-		cmp #"="
+		cmp #'='
 		beq fnret
 sunk		dec cursor
 donext		jsr done
 nxt		lda (line)
-		cmp #":"
+		cmp #':'
 		bne endedl
 stmt		ldy cursor;statement execution
 		inc cursor
 		lda (line), y
-		cmp #" "
+		cmp #' '
 		beq stmt
-		cmp #tptr2;lowest poly
+		cmp #< tptr2;lowest poly
 		bcc letst
 dispatch		asl
 		tax
 		jmp (adtabl - $e - $e, x)
 dc		jsr spaces;direct mode command
-		cmp #tauto
+		cmp #< tauto
 		bcs dispatch
 letst		ldx line
 		stx aeline
@@ -462,7 +462,7 @@ fnret		tsx
 		cpx #$fc
 		bcs fnerr
 		lda $01ff
-		cmp #tfn
+		cmp #< tfn
 		bne fnerr
 		jsr aeexpr
 		jmp fdone

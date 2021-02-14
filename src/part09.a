@@ -38,17 +38,17 @@ rndbb		jsr iflt
 		jsr ifix
 		jsr incacc
 		bra rptrx
-rndset		ldx #seed
+rndset		ldx #< seed
 		jsr acctom
 		lda #$40
 		sta seed + 4
 		rts
 rnd		ldy aecur
 		lda (aeline), y
-		cmp #"("
+		cmp #'('
 		beq rndb
 		jsr frndab
-		ldx #seed
+		ldx #< seed
 mtoacc		lda 0, x
 		sta iaccl
 		lda 1, x
@@ -89,7 +89,7 @@ ext		lda #2
 rptr		lda #0
 		pha
 		jsr chann
-		ldx #iaccl
+		ldx #< iaccl
 		pla
 		jsr osargs
 		bra rptrx
@@ -105,7 +105,7 @@ f		pha
 		jsr factor
 		bne opene
 		jsr osstrt
-		ldx #<stracc
+		ldx #< stracc
 		ldy #> stracc
 		pla
 		jsr osfind
@@ -164,9 +164,9 @@ valstr		ldx clen
 		lda #> stracc
 		sta aeline + 1
 		jsr aespac
-		cmp #"-"
+		cmp #'-'
 		beq valmin
-		cmp #"+"
+		cmp #'+'
 		bne valnub
 		jsr aespac
 valnub		dec aecur
@@ -253,7 +253,7 @@ point		jsr inexpr
 		pla
 		sta iaccn
 		ldy #0
-		ldx #iaccl
+		ldx #< iaccl
 		lda #$09
 		jsr osword
 		lda iaccl + 4
@@ -261,7 +261,7 @@ point		jsr inexpr
 		bra sgnsin
 instr		jsr expr
 		bne facte
-		cpx #","
+		cpx #','
 		bne instre
 		inc aecur
 		jsr phstr
@@ -270,9 +270,9 @@ instr		jsr expr
 		lda #1
 		sta iaccl
 		inc aecur
-		cpx #")"
+		cpx #')'
 		beq instrg
-		cpx #","
+		cpx #','
 		beq instrh
 instre		jmp comerr
 instrh		jsr stinbr
@@ -366,7 +366,7 @@ datasl		lda (aeline), y
 		inx
 		cmp #$0d
 		beq qstrf
-		cmp #","
+		cmp #','
 		bne datasl
 qstrf		dey
 qstre		dex
@@ -392,27 +392,27 @@ qstreg		jmp nstng
 factor		ldy aecur
 		inc aecur
 		lda (aeline), y
-		cmp #" "
+		cmp #' '
 		beq factor
-		cmp #"-"
+		cmp #'-'
 		beq unmins
 		cmp #'"'
 		beq qstr
-		cmp #"+"
+		cmp #'+'
 		bne doplus
 unplus		jsr aespac
-doplus		cmp #topenu
+doplus		cmp #< topenu
 		bcc tstvar
-		cmp #teof + 1
+		cmp #< teof + 1
 		bcs facerr
 		jmp dispatch
-tstvar		cmp #"?"
+tstvar		cmp #'?'
 		bcs tstvb
-		cmp #"."
+		cmp #'.'
 		bcs tstn
-		cmp #"&"
+		cmp #'&'
 		beq hexin
-		cmp #"("
+		cmp #'('
 		beq bra_
 tstvb		dec aecur
 		jsr lvcont
@@ -434,14 +434,14 @@ facerr		brk
 	!tx "No such variable"
 bkterr		brk
 	!tx $1b
-	!tx $8d , ")"
+	!tx $8d , ')'
 hexded		brk
 	!tx $1c
 	!tx "Bad Hex"
 		brk
 bra_		jsr expr
 		inc aecur
-		cpx #")"
+		cpx #')'
 		bne bkterr
 		tay
 		rts
@@ -484,7 +484,7 @@ adc_		jsr intfac
 ayaccb		bra ayacc
 to		iny
 		lda (aeline), y
-		cmp #"P"
+		cmp #'P'
 		bne facerr
 		inc aecur
 		lda top
@@ -521,9 +521,9 @@ get		jsr osrdch
 		bra sinstk
 rtime		iny
 		lda (aeline), y
-		cmp #"$"
+		cmp #'$'
 		beq rtimed
-		ldx #iaccl
+		ldx #< iaccl
 		ldy #0
 		lda #1
 		jsr osword
@@ -531,7 +531,7 @@ rtime		iny
 		rts
 rtimed		inc aecur
 		lda #14; read time$
-		ldx #<stracc
+		ldx #< stracc
 		ldy #> stracc
 		stz stracc;ask for long time
 		jsr osword
@@ -545,7 +545,7 @@ leftd		clc;LEFT$ and RIGHT$ share initial code
 rightd		php;carry SET on entry implies RIGHT$
 		jsr expr
 		bne lefte
-		cpx #","
+		cpx #','
 		bne midc
 		inc aecur
 		jsr stinbr
@@ -584,7 +584,7 @@ lefte		jmp letm
 midc		jmp comerr
 midd		jsr expr
 		bne lefte
-		cpx #","
+		cpx #','
 		bne midc
 		jsr phstr
 		inc aecur
@@ -594,9 +594,9 @@ midd		jsr expr
 		lda #$ff
 		sta iaccl
 		inc aecur
-		cpx #")"
+		cpx #')'
 		beq midtwo
-		cpx #","
+		cpx #','
 		bne midc
 		jsr intbra
 midtwo		jsr popstr
@@ -629,7 +629,7 @@ midlp		lda stracc, x
 		bra strnx
 strd		jsr aespac
 		ldy #$ff
-		cmp #"~"
+		cmp #'~'
 		beq strdt
 		ldy #0
 		dec aecur

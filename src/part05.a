@@ -6,7 +6,7 @@ creafn		ldy #1
 		lda (work), y
 		tax
 		lda #$f6
-		cpx #tproc
+		cpx #< tproc
 		beq creatf
 		lda #$f8
 		bra creatf
@@ -74,11 +74,11 @@ craelv		jsr aelv
 		bne craelt
 		inx
 		bra craelt
-lvfd		cmp #"!"
+lvfd		cmp #'!'
 		beq unplin
-		cmp #"$"
+		cmp #'$'
 		beq doll
-		eor #"?"
+		eor #'?'
 		beq unind
 		lda #0
 		sec
@@ -109,7 +109,7 @@ aelv		lda line
 lvblnk		iny
 		sty aecur
 		lda (aeline), y
-		cmp #" "
+		cmp #' '
 		beq lvblnk
 
 ;  LV reads the l value of the current item if possible.
@@ -129,7 +129,7 @@ lvblnk		iny
 ;  If there is an EQ status then if the carry is set it is silly
 ;   else if the carry is clear it is not in the list.
 
-lvcont		cmp #"@"
+lvcont		cmp #'@'
 		bcc lvfd;probably not an lv but check for unary things
 ;       this test also removes numeric first characters
 		cmp #$5b
@@ -139,7 +139,7 @@ lvcont		cmp #"@"
 		sta iaccl
 		iny
 		lda (aeline), y
-		cmp #"%"
+		cmp #'%'
 		bne multi
 		lda #> varl;optimised address generation
 		sta iaccm
@@ -147,7 +147,7 @@ lvcont		cmp #"@"
 		stx iaccn
 		iny
 		lda (aeline), y
-		cmp #"("
+		cmp #'('
 		bne chkque
 multi		ldx #5
 		stx iaccn
@@ -169,49 +169,49 @@ bktvnp		sta work
 		sty work + 1
 		ldy #1;X contains AECUR
 		lda (work), y
-		cmp #"A"
+		cmp #'A'
 		bcs bktva
-		cmp #"0"
+		cmp #'0'
 		bcc bktve
 		cmp #'9' + 1
 		bcs bktve
 bktvd		inx
 		iny
 		lda (work), y
-		cmp #"A"
+		cmp #'A'
 		bcs bktva
-		cmp #"0"
+		cmp #'0'
 		bcc bktve
 		cmp #'9' + 1
 		bcc bktvd
 		bra bktve
 bktva		cmp #'Z' + 1
 		bcc bktvd
-		cmp #"_"
+		cmp #'_'
 		bcc bktve
 		cmp #'z' + 1
 		bcc bktvd
 	+assert > bktvd = > *
 bktve		cpy #1
 		beq bktvfl
-		cmp #"$"
+		cmp #'$'
 		beq lvstr
-		cmp #"%"
+		cmp #'%'
 		bne bktvf
 		dec iaccn
 		inx
 		iny
 		lda (work), y
-bktvf		cmp #"("
+bktvf		cmp #'('
 		beq bktvar
 		jsr lookup
 		beq bktvfc
 		stx aecur
 chkpli		ldy aecur
 		lda (aeline), y
-chkque		cmp #"!"
+chkque		cmp #'!'
 		beq biplin
-		eor #"?"
+		eor #'?'
 		beq biquer
 		clc
 		sty aecur
@@ -252,7 +252,7 @@ lvstr		dec iaccn;temp size of 4
 		inx
 		iny
 		lda (work), y
-		cmp #"("
+		cmp #'('
 		beq lvstra
 		jsr lookup
 		beq bktvfc
@@ -287,9 +287,9 @@ array		inx
 arlop		jsr phacc
 		jsr inexpr
 		inc aecur
-		cpx #","
+		cpx #','
 		bne unarry
-		ldx #work + 2
+		ldx #< work + 2
 		jsr popx
 		ldy work + 5
 		pla
@@ -324,7 +324,7 @@ arlop		jsr phacc
 		sta work + 1
 		pla
 		sta work
-		ldx #work + 2
+		ldx #< work + 2
 		jsr popx
 		ldy work + 5
 		jsr tstrng
@@ -399,9 +399,9 @@ subscp		brk
 ;  WORD increments X and Y as counter and pointer
 word		ldy #1
 wordlp		lda (work), y
-		cmp #"0"
+		cmp #'0'
 		bcc worddn
-		cmp #"@"
+		cmp #'@'
 		bcs wordna
 		cmp #$3a
 		bcs worddn
@@ -410,7 +410,7 @@ wordlp		lda (work), y
 wordnc		inx
 		iny
 		bne wordlp
-wordna		cmp #"_"
+wordna		cmp #'_'
 		bcs wordnb
 		cmp #$5b
 		bcc wordnc
@@ -421,9 +421,9 @@ wordnb		cmp #$7b
 sptstm		inc cursor
 sptstn		ldy cursor;fetches a 2 byte constant using line
 		lda (line), y
-		cmp #" "
+		cmp #' '
 		beq sptstm
-		cmp #tconst
+		cmp #< tconst
 		bne fda
 spgetn		iny
 		lda (line), y
@@ -455,9 +455,9 @@ aeeqex		lda line
 eqexpr		ldy aecur;=<expression><s d> from aeline
 		inc aecur
 		lda (aeline), y
-		cmp #" "
+		cmp #' '
 		beq eqexpr
-		cmp #"="
+		cmp #'='
 		beq exprdn
 eqerro		brk
 	!tx 4
@@ -473,7 +473,7 @@ dobrk		brk
 	!tx "Escape"
 		brk
 eqeat		jsr aespac
-		cmp #"="
+		cmp #'='
 		bne eqerro
 		rts
 exprdn		jsr expr;<expression><s d> from aeline
@@ -486,19 +486,19 @@ endpr		tsx
 		cpx #$fc
 		bcs noproc
 		lda $01ff
-		cmp #tproc
+		cmp #< tproc
 		bne noproc
 done		ldy cursor;<s d> from line
 		dey
 blink		iny
 		lda (line), y
-		cmp #" "
+		cmp #' '
 		beq blink
-donet		cmp #":"
+donet		cmp #':'
 		beq clyadp
 		cmp #$0d
 		beq clyadp
-		cmp #telse
+		cmp #< telse
 		bne stded
 clyadp		clc
 		tya
@@ -513,7 +513,7 @@ tstbrk		bit $ff
 secend		rts
 forr		jsr done;provides for with the return address
 		lda (line)
-		cmp #":"
+		cmp #':'
 		beq secend
 		lda line + 1
 		cmp #> buffer
@@ -551,7 +551,7 @@ ifx		ldy aecur
 		ora iaccn
 		ora iacch
 		beq else
-		cpx #tthen
+		cpx #< tthen
 		beq then
 thenst		jmp stmt
 then		inc cursor
@@ -565,7 +565,7 @@ elselp		lda (line), y
 		cmp #$0d
 		beq ended
 		iny
-		cmp #telse
+		cmp #< telse
 		bne elselp
 		sty cursor
 		beq thenln
@@ -575,10 +575,10 @@ trjoba		lda iaccl
 		lda iaccm
 		sbc trnum + 1
 		bcs notrde
-		lda #"["
+		lda #'['
 		jsr chout + 4
 		jsr posite
-		lda #"]"
+		lda #']'
 		jsr chout + 4
 		jmp listpt
 	;!source cbas06
