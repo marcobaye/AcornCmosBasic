@@ -1,0 +1,952 @@
+;ACME 0.97
+
+;                                 FILE F input read line editor > CBAS0C
+;                                        stack files
+
+inpuhd		jmp letm
+inpuhe		jmp stded
+inpuhx		sty cursor
+inpuhz		jmp donext
+inputh		jsr daechan
+		sty coefp
+		jsr ascur
+inpuhl		jsr chkcom
+		bne inpuhx
+		lda coefp
+		pha
+		jsr craelv
+		beq inpuhe
+		jsr ascur
+		pla
+		sta coefp
+		php
+		jsr phacc
+		ldy coefp
+		jsr osbget
+		sta type
+		plp
+		bcc inpuhn
+		lda type
+		bne inpuhd
+		jsr osbget
+		sta clen
+		tax
+		beq inpuhs
+inpuht		jsr osbget
+		sta stracc - 1, x
+		dex
+		bne inpuht
+inpuhs		jsr ststor
+		bra inpuhl
+inpuhn		lda type
+		beq inpuhd
+		bmi inpuhf
+		ldx #3
+inpuhi		jsr osbget
+		sta iaccl, x
+		dex
+		bpl inpuhi
+		bra inpuhj
+inpuhf		ldx #4
+inpuhr		jsr osbget
+		sta fwsa, x
+		dex
+		bpl inpuhr
+		jsr ldarga
+inpuhj		jsr popwrk
+		jsr storf
+		bra inpuhl
+inout		pla
+		pla
+		bra inpuhz
+input		jsr chkhsh
+		beq inputh
+		cmp #tline
+		beq inlin
+		dec cursor
+		clc
+inlin		ror coefp
+		lsr coefp
+		lda #$ff
+		sta coefp + 1
+inplp		jsr prtstn
+		bcs inphp
+inplo		jsr prtstn
+		bcc inplo
+		ldx #$ff
+		stx coefp + 1
+		clc
+inphp		php
+		asl coefp
+		plp
+		ror coefp
+		cmp #","
+		beq inplp
+		cmp #";"
+		beq inplp
+		dec cursor
+		lda coefp
+		pha
+		lda coefp + 1
+		pha
+		jsr craelv
+		beq inout
+		pla
+		sta coefp + 1
+		pla
+		sta coefp
+		jsr ascur
+		php
+		bit coefp
+		bvs inget
+		lda coefp + 1
+		cmp #$ff
+		bne ingot
+inget		bit coefp
+		bpl ingeta
+		lda #"?"
+		jsr oswrch
+ingeta		jsr inline
+		sty clen;A=0
+		asl coefp
+		clc
+		ror coefp
+		bit coefp
+		bvs ingetb
+ingot		sta aecur
+		stz aeline;STRACC=0
+		lda #> stracc
+		sta aeline + 1
+		jsr datast
+interm		jsr comchk
+		beq ingetc
+		cmp #$0d
+		bne interm
+		ldy #$fe
+ingetc		iny
+		sty coefp + 1
+ingetb		plp
+		bcs inpstr
+		jsr phaddr
+		jsr valstr
+		jsr store
+inplpj		bra inplp
+inpstr		stz type
+		jsr ststre
+		bra inplpj
+restore		stz work + 6
+		ldy txtp
+		sty work + 7
+		jsr spaces
+		dec cursor
+		cmp #":"
+		beq resdon
+		cmp #$0d
+		beq resdon
+		cmp #telse
+		beq resdon
+		jsr gofact
+resdon		jsr done
+		lda work + 6
+		sta datap
+		lda work + 7
+		sta datap + 1
+		jmp nxt
+reads		jsr chkcom
+		beq read
+		jmp sunk
+read		jsr craelv
+		beq reads
+		bcs readst
+		jsr datait;read number
+		jsr phaddr
+		jsr stexpr
+		bra readen
+readst		jsr datait
+		jsr phacc
+		jsr datast
+		sta type
+		jsr ststor
+readen		clc
+		lda aecur
+		adc aeline
+		sta datap
+		lda aeline + 1
+		adc #0
+		sta datap + 1
+		bra reads
+datait		jsr ascur
+		lda datap
+		sta aeline
+		lda datap + 1
+		sta aeline + 1
+		stz aecur
+		jsr comchk
+		beq dataok
+		cmp #tdata
+		beq dataok
+		cmp #$0d
+		beq datanx
+dataln		jsr comchk
+		beq dataok
+		cmp #$0d
+		bne dataln
+datanx		ldy aecur
+		lda (aeline), y
+		bmi dataot
+		iny
+		iny
+		lda (aeline), y
+		tax
+datans		iny
+		lda (aeline), y
+		cmp #" "
+		beq datans
+		cmp #tdata
+		beq dataol
+		txa
+		clc
+		adc aeline
+		sta aeline
+		bcc datanx
+		inc aeline + 1
+		bra datanx
+dataot		brk
+	!tx $2a
+	!tx "Out of " , tdata
+nodos		brk
+	!tx $2b
+	!tx "No " , trepeat
+channe		brk
+	!tx $2d
+	!tx $8d , "#"
+dodp		brk
+	!tx $2c
+	!tx "Too many " , trepeat , "s"
+		brk
+dataol		iny
+		sty aecur
+dataok		rts
+until		jsr aeexpr
+		jsr fdone
+		jsr integ
+		ldx dostkp
+		beq nodos
+		lda iaccl
+		ora iaccm
+		ora iaccn
+		ora iacch
+		beq redo
+		dec dostkp
+		jmp nxt
+redo		ldy doadl - 1, x
+		lda doadh - 1, x
+		jmp jumpay
+daechan		dec cursor
+aechan		lda cursor
+		sta aecur
+		lda line
+		sta aeline
+		lda line + 1
+		sta aeline + 1
+chann		jsr aespac
+		cmp #"#"
+		bne channe
+		jsr intfac
+		ldy iaccl
+		tya
+		rts
+repeat		ldx dostkp
+		cpx #dotop
+		bcs dodp
+		jsr clyadp
+		lda line
+		sta doadl, x
+		lda line + 1
+		sta doadh, x
+		inc dostkp
+		jmp stmt
+inline		lda #> stracc
+		bra buffa
+buff		lda #> buffer
+buffa		stz work;both stracc and buffer=0
+		sta work + 1
+		lda #$ee
+		sta work + 2
+		lda #" "
+		sta work + 3
+		ldy #$ff
+		sty work + 04
+		iny
+		ldx #work
+		tya
+		jsr osword
+		bcc bufend
+		jmp dobrk
+nline		jsr oscrlf
+bufend		stz tally
+		rts
+remove		jsr fndlno;removes line whose number is in IACCL
+		bcc removx
+		lda work + 6
+		sta work
+		sta top
+		lda work + 7
+		sta work + 1
+		sta top + 1
+		ldy #3
+		lda (work), y
+		clc
+		adc work
+		sta work
+		bcc movea
+		inc work + 1
+movea		ldy #0
+		lda (work), y
+		sta (top), y
+		cmp #$0d
+		bne movl
+		iny
+		bne mov
+		inc work + 1
+		inc top + 1
+mov		lda (work), y
+		sta (top), y
+		bmi remend
+		jsr silinc
+		jsr silinc
+movl		iny
+		bne movea + 2
+		inc work + 1
+		inc top + 1
+		bra movea + 2
+remend		jmp yadt
+silinc		iny
+		bne silinx
+		inc top + 1
+		inc work + 1
+silinx		lda (work), y
+		sta (top), y
+removx		rts
+superbit	ldx #$ff
+		stx bytesm
+		stx consta
+		jsr setvar
+		lda line
+		sta work
+		lda line + 1
+		sta work + 1
+		stz mode
+		stz cursor
+		jsr matcha
+		jsr sptstn
+		bcc removx
+insrt		lda listop
+		beq insrts
+insrtl		lda buffer, y
+		iny
+		cmp #" "
+		beq insrtl
+		dey
+insrts		sty work + 4
+		jsr remove;find old line and remove it (leaves work+6)
+		ldy #> buffer
+		sty work + 5
+		ldy #0
+		lda #$0d
+		cmp (work + 4)
+		beq removx;carry set
+length		iny
+		cmp (work + 4), y
+		bne length
+		lda #" "
+tralsp		dey
+		beq tralex
+		cmp (work + 4), y
+		beq tralsp
+tralex		iny
+		lda #$0d
+		sta (work + 4), y
+		iny
+		iny
+		iny
+		iny
+		sty work + 8
+		lda top
+		sta work + 2
+		lda top + 1
+		sta work + 3
+		jsr clyadt
+		sta work
+		lda top + 1
+		sta work + 1
+		dey
+		lda himem
+		cmp top
+		lda himem + 1
+		sbc top + 1
+		bcs moveup
+		jsr ender;restore TOP
+		jsr setfsa
+		brk
+		brk
+	!tx tline , " space"
+		brk
+moveup		lda (work + 2), y
+		sta (work), y
+		tya
+		bne low
+		dec work + 3
+		dec work + 1
+low		dey
+		tya
+		adc work + 2
+		ldx work + 3
+		bcc loww
+		inx
+loww		cmp work + 6
+		txa
+		sbc work + 7
+		bcs moveup
+		ldy #1
+		lda iaccm
+		sta (work + 6), y
+		iny
+		lda iaccl
+		sta (work + 6), y
+		iny
+		lda work + 8
+		sta (work + 6), y
+		sec
+		tya
+		adc work + 6
+		sta work + 6
+		bcc clyidw
+		inc work + 7
+clyidw		ldy #$ff
+inslop		iny
+		lda (work + 4), y
+		sta (work + 6), y
+		cmp #$0d
+		bne inslop
+		rts;carry must be set at the end of INSRT
+setfsa		lda top
+		sta lomem
+		sta fsa
+		lda top + 1
+		sta lomem + 1
+		sta fsa + 1
+		jsr setvar
+setval		ldx #hpihi - vectab
+		lda vectab - 1, x
+		sta buffer + 256 - (hpihi - vectab) - 1, x
+		dex
+		bne setval + 2
+		ldx #$80
+setvrl		stz varptr - 1, x
+		dex
+		bne setvrl
+		rts
+setvar		lda txtp
+		sta datap + 1
+		lda himem
+		sta aestkp
+		lda himem + 1
+		sta aestkp + 1
+		lda #$80
+		trb listop
+		stz dostkp
+		stz forstp
+		stz substp
+		stz datap
+		rts
+
+popset		lda aestkp;pop the stack and set argp to point to the entry
+		clc
+		sta argp
+		adc #$05
+		sta aestkp
+		lda aestkp + 1
+		sta argp + 1
+		adc #0
+		sta aestkp + 1
+		rts
+phfacc		lda aestkp
+		sec
+		sbc #5
+		jsr hidec
+		lda faccx
+		sta (aestkp)
+		ldy #1
+		lda faccs
+		eor faccma
+		and #$80
+		eor faccma
+		sta (aestkp), y
+		iny
+		lda faccmb
+		sta (aestkp), y
+		iny
+		lda faccmc
+		sta (aestkp), y
+		iny
+		lda faccmd
+		sta (aestkp), y
+		rts
+phtype		beq phstr
+		bmi phfacc
+phacc		lda aestkp
+		sec
+		sbc #4
+		jsr hidec
+		ldy #3
+		lda iacch
+		sta (aestkp), y
+		dey
+		lda iaccn
+		sta (aestkp), y
+		dey
+		lda iaccm
+		sta (aestkp), y
+		lda iaccl
+		sta (aestkp)
+		rts
+phaddr		ply
+		plx
+		lda iaccl
+		pha
+		lda iaccm
+		pha
+		lda iaccn
+		pha
+		phx
+		phy
+		rts
+phstr		clc
+		lda aestkp
+		sbc clen
+		jsr hidec
+		ldy clen
+		beq phstrx
+phstrl		lda stracc - 1, y
+		sta (aestkp), y
+		dey
+		bne phstrl
+phstrx		lda clen
+		sta (aestkp)
+		rts
+storst		lda work + 2
+		cmp #$80
+		beq storsx
+		bcc storit
+		lda (aestkp)
+		tax
+		beq storsy
+		lda (work)
+		sbc #1
+		sta work + 2
+		ldy #1
+		lda (work), y
+		sbc #0
+		sta work + 3
+storsl		lda (aestkp), y
+		sta (work + 2), y
+		iny
+		dex
+		bne storsl
+storsy		lda (aestkp)
+		ldy #3
+storsw		sta (work), y
+		bra popstx
+storsx		lda (aestkp)
+		tax
+		beq storsz
+		ldy #1
+storsv		lda (aestkp), y
+		dey
+		sta (work), y
+		iny
+		iny
+		dex
+		bne storsv
+storsz		lda #$0d
+		bne storsw
+storit		lda (aestkp)
+		sta (work)
+		ldy #4
+		lda work + 2
+		beq storiy
+		ldy #1
+		lda (aestkp), y
+		sta (work), y
+		iny
+		lda (aestkp), y
+		sta (work), y
+		iny
+		lda (aestkp), y
+		sta (work), y
+		iny
+		cpy work + 2
+		bcs storiy
+		lda (aestkp), y
+		sta (work), y
+		iny
+storiy		tya
+		clc
+		bra popn
+popstr		lda (aestkp)
+		sta clen
+		beq popsty
+		tay
+popstl		lda (aestkp), y
+		sta stracc - 1, y
+		dey
+		bne popstl
+popstx		lda (aestkp)
+popsty		sec
+		bra popn
+popacc		ldy #3
+		lda (aestkp), y
+		sta iacch
+		dey
+		lda (aestkp), y
+		sta iaccn
+		dey
+		lda (aestkp), y
+		sta iaccm
+		lda (aestkp)
+		sta iaccl
+popinc		clc
+		lda #4
+popn		adc aestkp
+		sta aestkp
+		bcc popaci
+		inc aestkp + 1
+popaci		rts
+popwrk		ldx #work
+popx		ldy #3
+		lda (aestkp), y
+		sta 3, x
+		dey
+		lda (aestkp), y
+		sta 2, x
+		dey
+		lda (aestkp), y
+		sta 1, x
+		lda (aestkp)
+		sta 0, x
+		bra popinc
+hidec		sta aestkp
+		bcs hideca
+		dec aestkp + 1
+hideca		ldy aestkp + 1
+		cpy fsa + 1
+		bcc hidece
+		bne hidecx
+		cmp fsa
+		bcc hidece
+hidecx		rts
+		jsr setfsa;HIDECE-3
+hidece		jmp allocr
+tokout		sta work
+		cmp #$80
+		bcc chout
+		lda #< tokens
+		sta work + 1
+		lda #> tokens
+		sta work + 2
+		phy
+fintok		ldy #0
+lootok		iny
+		lda (work + 1), y
+		bpl lootok
+		cmp work
+		beq gottok
+		iny
+		tya
+		sec
+		adc work + 1
+		sta work + 1
+		bcc fintok
+		inc work + 2
+		bra fintok
+gottok		ldy #0
+prttok		lda (work + 1), y
+		bmi endtok
+		jsr chout
+		iny
+		bne prttok
+endtok		ply
+		rts
+hexout		pha
+		lsr
+		lsr
+		lsr
+		lsr
+		jsr dig
+		pla
+		and #$0f
+dig		cmp #$0a
+		bcc digr
+		adc #6
+digr		adc #$30
+nch		pha
+		lda widthv
+		cmp tally
+		bcs nocrlf
+		jsr nline
+nocrlf		pla
+		inc tally
+		jmp ($20e)
+hexsp		jsr hexout
+listpt		lda #" "
+chout		bit listop
+		bmi choutr
+		cmp #$0d;CHOUT+4 also an entry point
+		bne nch
+		jsr oswrch
+		jmp bufend
+choutr		sta (fsa)
+		inc fsa
+		bne listpx
+		inc fsa + 1
+		pha
+		lda fsa + 1
+		eor himem + 1
+		beq hidece - 3;no room and clear
+		pla
+		rts
+		clc;LISTPS-1
+listps		and listop
+		beq listpx
+		txa
+		bmi listpx
+		rol
+		tax
+		beq listpx
+listpl		jsr listpt
+		dex
+		bne listpl
+listpx		rts
+acctom		lda iaccl
+		sta 0, x
+		lda iaccm
+		sta 1, x
+		lda iaccn
+		sta 2, x
+		lda iacch
+		sta 3, x
+		rts
+loader		jsr osthig
+		stz work + 6
+		ldy #0
+		lda #$ff
+		ldx #work
+		jsr osfile
+ender		lda txtp
+		sta top + 1
+		stz top
+		ldy #1
+fndtop		lda (top)
+		cmp #$0d
+		bne badpro
+		lda (top), y
+		bmi settop
+		ldy #3
+		lda (top), y
+		beq badpro
+		clc
+		jsr yadt + 1
+		bra fndtop
+settop		iny
+clyadt		clc
+yadt		tya
+		adc top
+		sta top
+		bcc endadt
+		inc top + 1
+endadt		ldy #1
+		rts
+badpro		jsr vstrng
+	!tx 13 , "Bad program" , 13
+		nop
+		jmp clrstk
+osstrg		stz work;STRACC is 0
+		lda #> stracc
+		sta work + 1
+osstrt		ldy clen
+		lda #$0d
+		sta stracc, y
+		rts
+osthie		jmp letm
+osthif		jsr aeexpr
+		bne osthie
+		jsr osstrg
+		jmp fdone
+osthig		jsr osthif
+		dey
+		sty work + 2
+		lda txtp
+		sta work + 3
+getmac		lda #$82
+		jsr osbyte
+		stx work + 4
+		sty work + 5
+		rts
+save		jsr ender
+		jsr osthig
+		stx work + 8
+		sty work + 9
+		stx work + 12
+		sty work + 13
+		stx work + 16
+		sty work + 17
+		stz work + 10
+		ldx top
+		stx work + 14
+		ldx top + 1
+		stx work + 15
+		ldx #< entry
+		stx work + 6
+		ldx #> entry
+		stx work + 7
+		ldx txtp
+		stx work + 11
+		lda #0
+		tay
+		ldx #work
+		jsr osfile
+		bra lptrx
+oscl		jsr osthif
+		ldx #< stracc
+		ldy #> stracc
+		jsr oscli
+		bra lptrx
+setext		lda #3
+		bra lptr + 2
+lptr		lda #1
+		pha
+		jsr aechan
+		phy
+		jsr eqexpr
+		jsr integ
+		ply
+		ldx #iaccl
+		pla
+		jsr osargs
+lptrx		jmp nxt
+close		jsr aechan
+		jsr aedone
+		ldy iaccl
+		lda #0
+		jsr osfind
+		bra lptrx
+bput		jsr aechan
+		pha
+		jsr incmex
+		jsr aedone
+		ply
+		lda iaccl
+		jsr osbput
+		bra lptrx
+vstrng		pla
+		sta work
+		pla
+		sta work + 1
+		bra vstrlp
+vstrlm		jsr osasci
+vstrlp		jsr getwk2
+		bpl vstrlm
+		jmp (work)
+readbyte	lda #5
+		phx
+		ldx #iaccl
+		ldy #0
+		jsr osword
+		plx
+		lda iaccl + 4
+incacc		inc iaccl
+		bne incdon
+		inc iaccm
+		bne incdon
+		inc iaccn
+		bne incdon
+		inc iacch
+incdon		rts
+fromat		lda #$0d;clear text by 0d ff at start
+		ldy txtp
+		sty top + 1
+		stz top
+		stz trflag
+		sta (top)
+		lda #$ff
+		ldy #1
+		sta (top), y
+		iny
+		sty top
+		rts
+vectab	!wo fsqrt
+	!wo fxdiv
+	!wo fmul
+	!wo fadd
+	!wo fneg
+	!wo flda
+	!wo fsta
+	!tx argp , faccs
+hpihi	!tx $81 , $c9 , $10 , $00 , $00;-1.570800781E0
+hpilo	!tx $6f , $15 , $77 , $7a , $61;4.454455111E-6
+halfpi	!tx $81 , $49 , $0f , $da , $a2;1.570796327E0
+f2dpi	!tx $80 , $22 , $f9 , $83 , $6e;0.6366197723
+fpid18	!tx $7b , $0e , $fa , $35 , $12;1.745329252E-2
+f180dp	!tx $86 , $65 , $2e , $e0 , $d3;5.729577951E1
+rpln10	!tx $7f , $5e , $5b , $d8 , $aa;4.342944820E-1
+fnume	!tx $82 , $2d , $f8 , $54 , $58;2.718281828E0
+logtwo	!tx $80 , $31 , $72 , $17 , $f8;6.931471806E-1
+flogtc	!tx $80 , $0b , $d7 , $50 , $29;5.462541676E-1
+	!tx $7c , $d2 , $7c , $86 , $05;-5.138828613E-2
+	!tx $80 , $15 , $52 , $b6 , $36;5.832933313E-1
+	!tx $7c , $99 , $98 , $36 , $04;-3.749867534E-2
+	!tx $80 , $40 , $00 , $01 , $10;7.500000633E-1
+	!tx $7f , $2a , $aa , $aa , $e3;3.333333399E-1
+	!tx $7f , $ff , $ff , $ff , $ff;-4.999999999E-1
+fsinc	!tx $7a , $c3 , $1e , $18 , $be;-1.190903107E-2
+	!tx $73 , $61 , $71 , $55 , $2d;1.074994592E-4
+	!tx $7b , $8c , $9b , $91 , $88;-1.716402458E-2
+	!tx $77 , $2b , $a4 , $c4 , $53;1.309536901E-3
+	!tx $7c , $4c , $cc , $ca , $b7;4.999999223E-2
+	!tx $7e , $aa , $aa , $aa , $a6;-1.666666664E-1
+	!tx $81 , $00 , $00 , $00 , $00;1.000000000E0 (used as fatanc-5 as 1)
+fatanc	!tx $7d , $a3 , $f2 , $ef , $44;-8.005320479E-2
+	!tx $7e , $1f , $01 , $a1 , $4d;1.552796558E-1
+	!tx $7f , $61 , $6d , $f4 , $3f;4.402920081E-1
+	!tx $7e , $5c , $91 , $23 , $ac;2.153974127E-1
+	!tx $7e , $76 , $b8 , $8d , $1a;2.409383819E-1
+	!tx $7d , $1d , $3e , $ab , $2c;7.677968720E-2
+	!tx $81 , $09 , $41 , $81 , $d2;1.072311618E0
+	!tx $80 , $74 , $df , $bd , $20;9.565389827E-1
+	!tx $80 , $83 , $8b , $1f , $b5;-5.138416116E-1
+	!tx $7f , $82 , $59 , $ad , $ab;-2.545904418E-1
+	!tx $80 , $6d , $63 , $38 , $2c;9.272952182E-1
+fexpco	!tx $7d , $11 , $d4 , $b1 , $d1;7.120646400E-2
+	!tx $79 , $68 , $bc , $4f , $59;7.102526421E-3
+	!tx $75 , $05 , $2c , $9e , $39;2.540097986E-4
+	!tx $7b , $08 , $88 , $3b , $a6;1.666652346E-2
+	!tx $6c , $31 , $cf , $d1 , $8c;6.624005406E-7
+	!tx $7d , $2a , $aa , $aa , $89;8.333333235E-2
+	!tx $7f , $ff , $ff , $ff , $e8;-4.999999972E-1
+	!tx $81 , $00 , $00 , $00 , $00;1.000000000E0
+	!tx $81 , $00 , $00 , $00 , $00;1.000000000E0
+zeend
+	+assert > * = > hpihi
+
+; CAUTION, original binary stops after "Rog"!
+	!tx "Roger Wilson"
+		brk
+		brk
+		brk
+		brk
+		brk
+		brk
+		brk
+		brk
+	;end

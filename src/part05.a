@@ -1,0 +1,584 @@
+;ACME 0.97
+
+;                                    FILE 6 support routines, if > CBAS05
+
+creafn		ldy #1
+		lda (work), y
+		tax
+		lda #$f6
+		cpx #tproc
+		beq creatf
+		lda #$f8
+		bra creatf
+;  CREATE takes the same parameters as LOOKUP and adds the
+;  data item to the linked list. It is not optimised.
+create		ldy #1
+		lda (work), y
+		asl
+creatf		ldx #> varptr
+creend		sta work + 3
+		stx work + 4
+		lda (work + 3), y
+		beq crendg
+		tax
+		lda (work + 3)
+		bra creend
+crendg		lda fsa + 1
+		sta (work + 3), y
+		lda fsa
+		sta (work + 3);put in new link address
+		lda #0
+		sta (fsa), y;put in new 0 high byte
+		iny
+		cpy work + 2;check if done the length 1 case
+		beq creatx
+credat		lda (work), y
+		sta (fsa), y
+		iny
+		cpy work + 2
+		bne credat
+		rts
+;  CREAX updates FSA on the assumption that x-1 bytes are to be used
+;  Y contains next address offset, four bytes are zeroed
+;  If we run out of ram it resets the list end with the old
+;  pointer in work+3
+creax		lda #0;another entry point to do x-1 bytes
+crezer		sta (fsa), y
+		iny
+		dex
+		bne crezer
+fsapy		clc
+		tya
+		adc fsa
+		bcc creaty
+		inc fsa + 1
+creaty		ldy fsa + 1
+		cpy aestkp + 1
+		bcc creatz
+		bne creatd
+		cmp aestkp
+		bcc creatz
+creatd		lda #0;unlink the entry
+		ldy #1
+		sta (work + 3), y
+		jmp allocr
+creatz		sta fsa
+creatx		rts
+craelt		jsr creax
+craelv		jsr aelv
+		bne lvrts
+		bcs lvrts
+		jsr create
+		ldx #5
+		cpx iaccn
+		bne craelt
+		inx
+		bra craelt
+lvfd		cmp #"!"
+		beq unplin
+		cmp #"$"
+		beq doll
+		eor #"?"
+		beq unind
+		lda #0
+		sec
+lvrts		rts
+unplin		lda #4
+unind		pha
+		inc aecur
+		jsr intfac
+		jmp inset
+doll		inc aecur
+		jsr intfac
+		lda iaccm
+		beq doller
+		lda #$80
+		sta iaccn
+		sec
+		rts
+doller		brk
+	!tx 8
+	!tx "$ range"
+		brk
+aelv		lda line
+		sta aeline
+		lda line + 1
+		sta aeline + 1
+		ldy cursor
+		dey
+lvblnk		iny
+		sty aecur
+		lda (aeline), y
+		cmp #" "
+		beq lvblnk
+
+;  LV reads the l value of the current item if possible.
+
+;  If it is a numeric lv then the carry will be clear [ !<factor>
+;   ?<factor> <variable>!<factor> <variable>?<factor> <word> <word>%
+;   <word>( <word>%( ] and IACCN will be 0 for byte, 4 for integer
+;   and 5 for a floating point variable
+
+;  If it is a string lv then the carry will be set [ $<factor>
+;   <word>$ <word>$( ] and IACCN will be 128 for $<factor> and >128
+;   otherwise.
+
+;  In both these cases IACCL,IACCM will be the address of the data
+;   byte(s) {or string control block} and there will be an NEQ status
+
+;  If there is an EQ status then if the carry is set it is silly
+;   else if the carry is clear it is not in the list.
+
+lvcont		cmp #"@"
+		bcc lvfd;probably not an lv but check for unary things
+;       this test also removes numeric first characters
+		cmp #$5b
+		bcs multi
+		asl
+		asl
+		sta iaccl
+		iny
+		lda (aeline), y
+		cmp #"%"
+		bne multi
+		lda #> varl;optimised address generation
+		sta iaccm
+		ldx #4
+		stx iaccn
+		iny
+		lda (aeline), y
+		cmp #"("
+		bne chkque
+multi		ldx #5
+		stx iaccn
+		clc
+		ldy aeline + 1
+		lda aecur
+		tax
+		bne bktvno
+		dec
+		adc aeline
+		bcs bktvnp
+		dey
+		bra bktvnp
+bktvno		dec
+		adc aeline
+		bcc bktvnp
+		iny
+bktvnp		sta work
+		sty work + 1
+		ldy #1;X contains AECUR
+		lda (work), y
+		cmp #"A"
+		bcs bktva
+		cmp #"0"
+		bcc bktve
+		cmp #'9' + 1
+		bcs bktve
+bktvd		inx
+		iny
+		lda (work), y
+		cmp #"A"
+		bcs bktva
+		cmp #"0"
+		bcc bktve
+		cmp #'9' + 1
+		bcc bktvd
+		bra bktve
+bktva		cmp #'Z' + 1
+		bcc bktvd
+		cmp #"_"
+		bcc bktve
+		cmp #'z' + 1
+		bcc bktvd
+	+assert > bktvd = > *
+bktve		cpy #1
+		beq bktvfl
+		cmp #"$"
+		beq lvstr
+		cmp #"%"
+		bne bktvf
+		dec iaccn
+		inx
+		iny
+		lda (work), y
+bktvf		cmp #"("
+		beq bktvar
+		jsr lookup
+		beq bktvfc
+		stx aecur
+chkpli		ldy aecur
+		lda (aeline), y
+chkque		cmp #"!"
+		beq biplin
+		eor #"?"
+		beq biquer
+		clc
+		sty aecur
+		lda #$ff
+		rts
+bktvfl		lda #0
+		sec
+		rts;syntax
+bktvfc		lda #0
+		clc
+		rts;unknown
+biplin		lda #4
+biquer		pha
+		iny
+		sty aecur
+		jsr varind
+		jsr integb
+		lda iaccm
+		pha
+		lda iaccl
+		pha
+		jsr intfac
+		clc
+		pla
+		adc iaccl
+		sta iaccl
+		pla
+		adc iaccm
+		sta iaccm
+inset		pla
+		sta iaccn
+		clc
+		lda #$ff
+		rts
+bktvar		jsr array
+		bra chkpli
+lvstr		dec iaccn;temp size of 4
+		inx
+		iny
+		lda (work), y
+		cmp #"("
+		beq lvstra
+		jsr lookup
+		beq bktvfc
+		stx aecur
+lvstrb		lda #$81
+		sta iaccn
+		sec
+		rts
+lvstra		jsr array
+		bra lvstrb
+unarry		brk
+	!tx $0e
+	!tx "Array"
+		brk
+array		inx
+		iny
+		jsr lookup
+		beq unarry
+		stx aecur
+		lda iaccn
+		pha
+		lda iaccl
+		pha
+		lda iaccm
+		pha
+		lda (iaccl)
+		cmp #4
+		bcc aquick
+		jsr false
+		lda #1
+		sta iacch
+arlop		jsr phacc
+		jsr inexpr
+		inc aecur
+		cpx #","
+		bne unarry
+		ldx #work + 2
+		jsr popx
+		ldy work + 5
+		pla
+		sta work + 1
+		pla
+		sta work
+		pha
+		lda work + 1
+		pha
+		jsr tstrng
+		sty iacch
+		lda (work), y
+		sta work + 8
+		iny
+		lda (work), y
+		sta work + 9
+		lda iaccl
+		adc work + 2
+		sta iaccl
+		lda iaccm
+		adc work + 3
+		sta iaccm
+		jsr wmul
+		sec
+		lda (work)
+		sbc iacch
+		cmp #3
+		bcs arlop
+		jsr phacc
+		jsr intbra
+		pla
+		sta work + 1
+		pla
+		sta work
+		ldx #work + 2
+		jsr popx
+		ldy work + 5
+		jsr tstrng
+		clc
+		lda work + 2
+		adc iaccl
+		sta iaccl
+		lda work + 3
+		adc iaccm
+		sta iaccm
+		bcc arfour
+aquick		jsr bra_
+		jsr integb
+		pla
+		sta work + 1
+		pla
+		sta work
+		ldy #1
+		jsr tstrng
+arfour		pla
+		sta iaccn
+		cmp #$05
+		bne arfo
+		ldx iaccm
+		lda iaccl
+		asl iaccl
+		rol iaccm
+		asl iaccl
+		rol iaccm
+		adc iaccl
+		sta iaccl
+		txa
+		adc iaccm
+		sta iaccm
+		bra arfi
+arfo		asl iaccl
+		rol iaccm
+		asl iaccl
+		rol iaccm
+arfi		tya
+		adc iaccl
+		sta iaccl
+		bcc nninc
+		inc iaccm
+		clc
+nninc		lda work
+		adc iaccl
+		sta iaccl
+		lda work + 1
+		adc iaccm
+		sta iaccm
+		rts
+tstrng		lda iaccm
+		and #$c0
+		ora iaccn
+		ora iacch
+		bne subscp
+		lda iaccl
+		cmp (work), y
+		iny
+		lda iaccm
+		sbc (work), y
+		bcs subscp
+		iny
+		rts
+subscp		brk
+	!tx $0f
+	!tx "Subscript"
+		brk
+;  WORD reads a word for LOOKUP
+;  Characters A-Z, 0-9 _-z are allowed in a word.
+;  WORD increments X and Y as counter and pointer
+word		ldy #1
+wordlp		lda (work), y
+		cmp #"0"
+		bcc worddn
+		cmp #"@"
+		bcs wordna
+		cmp #$3a
+		bcs worddn
+		cpy #1
+		beq worddn;check no number on first character
+wordnc		inx
+		iny
+		bne wordlp
+wordna		cmp #"_"
+		bcs wordnb
+		cmp #$5b
+		bcc wordnc
+worddn		rts
+wordnb		cmp #$7b
+		bcc wordnc
+		rts
+sptstm		inc cursor
+sptstn		ldy cursor;fetches a 2 byte constant using line
+		lda (line), y
+		cmp #" "
+		beq sptstm
+		cmp #tconst
+		bne fda
+spgetn		iny
+		lda (line), y
+		asl
+		asl
+		tax
+		and #$c0
+		iny
+		eor (line), y
+		sta iaccl
+		txa
+		asl
+		asl
+		iny
+		eor (line), y
+		sta iaccm
+		iny
+		sty cursor
+		sec
+		rts
+fda		clc
+		rts
+aeeqex		lda line
+		sta aeline
+		lda line + 1
+		sta aeline + 1
+		lda cursor
+		sta aecur
+eqexpr		ldy aecur;=<expression><s d> from aeline
+		inc aecur
+		lda (aeline), y
+		cmp #" "
+		beq eqexpr
+		cmp #"="
+		beq exprdn
+eqerro		brk
+	!tx 4
+	!tx "Mistake"
+stded		brk
+	!tx $10
+	!tx "Syntax error"
+noproc		brk
+	!tx $0d
+	!tx "No " , tproc
+dobrk		brk
+	!tx $11
+	!tx "Escape"
+		brk
+eqeat		jsr aespac
+		cmp #"="
+		bne eqerro
+		rts
+exprdn		jsr expr;<expression><s d> from aeline
+fdone		txa;fast done immediately after expr
+		ldy aecur
+		bra donet
+aedone		ldy aecur;<s d> from aeline
+		bra done + 2
+endpr		tsx
+		cpx #$fc
+		bcs noproc
+		lda $01ff
+		cmp #tproc
+		bne noproc
+done		ldy cursor;<s d> from line
+		dey
+blink		iny
+		lda (line), y
+		cmp #" "
+		beq blink
+donet		cmp #":"
+		beq clyadp
+		cmp #$0d
+		beq clyadp
+		cmp #telse
+		bne stded
+clyadp		clc
+		tya
+		adc line
+		sta line
+		bcc secur
+		inc line + 1
+secur		ldy #1
+		sty cursor
+tstbrk		bit $ff
+		bmi dobrk
+secend		rts
+forr		jsr done;provides for with the return address
+		lda (line)
+		cmp #":"
+		beq secend
+		lda line + 1
+		cmp #> buffer
+		beq leaver
+lino		ldy #1;skip line number
+		lda (line), y
+		bmi leaver
+		ldx trflag
+		beq notr
+		sta iaccm
+		iny
+		lda (line), y
+		sta iaccl
+		jsr trjoba
+notr		lda #3
+addlin		clc
+		adc line
+		sta line
+		bcc linoin
+		inc line + 1
+linoin		ldy #1
+		sty cursor
+notrde		rts
+leaver		jmp clrstk
+;  if statement
+ife		jmp letm
+if		jsr aeexpr
+		beq ife
+		bpl ifx
+		jsr ifix
+ifx		ldy aecur
+		sty cursor
+		lda iaccl
+		ora iaccm
+		ora iaccn
+		ora iacch
+		beq else
+		cpx #tthen
+		beq then
+thenst		jmp stmt
+then		inc cursor
+thenln		jsr sptstn
+		bcc thenst
+		jsr gotgo
+		jsr secur
+		jmp godone
+else		ldy cursor;try to find else clause
+elselp		lda (line), y
+		cmp #$0d
+		beq ended
+		iny
+		cmp #telse
+		bne elselp
+		sty cursor
+		beq thenln
+ended		jmp elseln
+trjoba		lda iaccl
+		cmp trnum
+		lda iaccm
+		sbc trnum + 1
+		bcs notrde
+		lda #"["
+		jsr chout + 4
+		jsr posite
+		lda #"]"
+		jsr chout + 4
+		jmp listpt
+	;!source cbas06

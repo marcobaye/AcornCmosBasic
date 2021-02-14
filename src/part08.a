@@ -1,0 +1,621 @@
+;ACME 0.97
+
+;   FILE 9  PLUS,MINUS,TIMES,DIV,transcendentals. > CBAS08
+;   SIN, COS, EXP
+fclrw		stz fwrks;+6 also an entry point
+		stz fwrkx
+		stz fwrkma
+		stz fwrkmb
+		stz fwrkmc
+		stz fwrkmd
+		stz fwrkmg
+		rts
+fcfstp		clc
+		lda coefp
+		adc #$05
+		sta coefp
+		sta argp
+		rts
+arghpi		lda #< halfpi
+setcof		sta argp
+		lda #> hpihi
+		sta argp + 1
+		rts
+arga		lda #<fwsa
+argcom		sta argp
+		lda #> fwsd
+		sta argp + 1
+		rts
+tan		jsr frange
+		lda #<fwsd
+		jsr fstap
+		jsr fsc
+		lda #<fwsc
+		jsr fstap
+		lda #<fwsd
+		jsr fldarg
+		jsr fsc - 2;INC FQUAD first
+acdiv		lda #<fwsc
+		jsr argcom
+		jsr fxdiv
+		lda #$ff
+		rts
+;   FIPOW COMPUTES X**N WHERE X IS PASSED IN
+;   F.P. ACC, N IS A ONE BYTE SIGNED INTEGER PASSED IN A
+fipow		tax
+		bpl fipowa;+VE POWER
+		dec
+		eor #$ff;2'S COMPLEMENT ACC
+		pha
+		jsr frecip
+		plx;RECOVER EXPONENT
+fipowa		beq fone
+		jsr starga
+		dex
+		beq fipowz
+fipowb		jsr fmul
+		dex
+		bne fipowb
+fipowz		rts;RETURN FROM DIVIDE, ALSO
+fone		lda #$80
+		sta faccma
+		inc
+		sta faccx
+		jmp fclrb
+fdivz		jmp zdivor
+fdivt	!tx 2 , 8 , 8 , 8
+frecip		lda #< fatanc - 5;1
+		jsr setcof
+;(argp) divided by facc
+fxdiv		lda faccma
+		beq fdivz;divide by zero
+		jsr fldw
+		bne fdiva;result is zero
+		jmp fclr
+fdiva		lda fwrks
+		eor faccs
+		sta faccs;SIGN CORRECT
+		sec
+		lda fwrkx;difference of exponents
+		adc #$81
+		rol faccxh
+		sbc faccx
+		bcs fdivb
+		dec faccxh
+fdivb		sta faccx
+		ldy #4
+		sty fwrkx
+		lda fwrkma
+		ldx #8
+		bra fdive + 2
+fdivn		stx ftmpma + 1, y	; FIXME - force zeropage?
+		ldx fdivt, y
+		sty fwrkx
+fdive		bcs fdivh
+		cmp faccma
+		bne fdivf
+		ldy fwrkmb
+		cpy faccmb
+		bne fdivf
+		ldy fwrkmc
+		cpy faccmc
+		bne fdivf
+		ldy fwrkmd
+		cpy faccmd
+fdivf		bcc fdivg;WON'T GO
+fdivh		tay;WRK-ACC, C BIT ALREADY SET FOR SBC
+		lda fwrkmd
+		sbc faccmd
+		sta fwrkmd
+		lda fwrkmc
+		sbc faccmc
+		sta fwrkmc
+		lda fwrkmb
+		sbc faccmb
+		sta fwrkmb
+		tya
+		sbc faccma
+		sec
+fdivg		rol fwrks
+		asl fwrkmd
+		rol fwrkmc
+		rol fwrkmb
+		rol
+		dex
+		bne fdive
+		ldx fwrks
+		ldy fwrkx
+		dey
+		bpl fdivn
+	+assert > fdivn = > *
+		ora fwrkmb
+		ora fwrkmc
+		ora fwrkmd
+		beq * + 3
+		sec
+		txa
+		ror
+		ror
+		ror
+		and #$e0
+		sta faccmg
+		lda ftmpma + 1
+		sta faccmd
+		lda ftmpma + 2
+		sta faccmc
+		lda ftmpma + 3
+		sta faccmb
+		lda ftmpma + 4
+		sta faccma
+		bmi ftidy
+		jsr fnrmaz;FACCMA must be 01XXXXXX
+		bra ftidy
+fxsub		jsr fneg
+fadd		jsr fldw
+		beq faddz2;A+0.0 = A
+faddw		jsr faddw1
+ftidy		lda faccmg
+		cmp #$80
+		bcc ftrndz
+		beq ftrnda
+		inc faccmd
+		bne ftrndz
+		jsr fplnfi;carry set on call
+		bra ftrndz
+fmul		jsr ifmul
+		bra ftidy
+ftrnda		rol;A was=&80 and c was set, so A=1
+		tsb faccmd
+ftrndz		lda faccxh
+		beq ftidyz
+		bpl fovr;overflow
+fclr		stz faccx
+		stz faccma
+fclrb		stz faccs
+		stz faccxh
+		stz faccmb
+		stz faccmc
+		stz faccmd
+ftidyz		stz faccmg
+faddz2		rts
+fovr		brk
+	!tx $14
+	!tx "Too big"
+		brk
+ifmul		lda faccma
+		beq faddz2;0.0 * SOMETHING
+		jsr fldw;GET OTHER ARG
+		beq fclr
+		clc
+		lda faccx
+		adc fwrkx;add exponents
+		rol faccxh;set lsb of faccxh and clear carry
+;  Subtract $80 bias from exponent, do not check over/underflow
+;  yet in case renormalisation fixes things
+		sbc #$7f;carry subtracts extra 1
+		sta faccx
+		bcs fmulc
+		dec faccxh
+;   COPY ACC TO TMP, CLEAR ACC THEN I CAN DO ACC:=WRK*TMP
+;   AS A FIXED POINT OPERATION.
+fmulc		lda faccs
+		eor fwrks
+		sta faccs;GET SIGN RIGHT
+		phx
+		ldx #- 8
+		ldy #4
+fmulca		lda faccma + 8, x
+		stz faccma + 8, x
+		sta ftmpma - 1, y
+		inx
+		dey
+		bne fmulca
+; LDYIM 0;FACCMG
+		stz fwrkx
+		stz fwrkx - 1
+		stz fwrkx - 2
+		bra fmulg
+; X already -4
+fmuld		phx
+		lsr fwrkma
+		ror fwrkmb
+		ror fwrkmc
+		ror fwrkmd
+		ror fwrkmg
+fmule		asl ftmpma + 4, x
+		bcc fmulf
+		clc
+		tya
+		adc fwrkmg + 1, x
+		tay
+		lda faccmd
+		adc fwrkmd + 1, x
+		sta faccmd
+		lda faccmc
+		adc fwrkmc + 1, x
+		sta faccmc
+		lda faccmb
+		adc fwrkmb + 1, x
+		sta faccmb
+		lda faccma
+		adc fwrkma + 1, x
+		sta faccma
+fmulf		inx
+		bmi fmule
+		plx
+fmulg		lda ftmpma + 4, x
+		bne fmuld
+	+assert > fmuld = > *
+		inx
+		bmi fmulg
+		plx
+		sty faccmg
+		lda faccma
+		bmi faddz2
+		jmp fnrm + 4
+;   FLOG SETS ACC := LOG(ACC)
+;   (BASE E). WORKS BY
+;   (A) CHECK FOR ACC <= 0.0
+;   (B) STRIP EXPONENT TO PUT
+;       ACC IN RANGE 1.0 - 2.0
+;       AND RENORMALIZE TO
+;       .707 TO 1.414
+;   (B2) extra care with smallest possible exponent
+;   (C) approximate log using (x-1)+(x-1)^2*cf(x-1)
+;       where cf is a minimax continued fraction
+;   (D) ADD RESULT TO
+;      EXPONENT * LOG(2.0)
+;   N.B. RESULT CAN NOT OVERFLOW
+;   SO NO WORRY THERE.
+;   THE SERIES APPROXIMATION
+;   USED FOR LOGS IS A CONTINUED
+;   FRACTION
+;    F(X)=C(0)+X/(C(1)+X/(...
+ln		jsr fltfac
+flog		jsr ftst
+		beq floga;LOG(0.0) ILLEGAL
+		bpl flogb;LOG(>0.0) OK
+floga		brk;-VE OR ZERO LOG
+	!tx $16
+	!tx "Log range"
+fsqrtn		brk
+	!tx $15
+	!tx "-ve root"
+		brk
+flogb		jsr fclrw + 6
+		ldy #$80
+		sty fwrks
+		sty fwrkma
+		iny
+		sty fwrkx
+		ldx faccx
+		beq flogc
+		lda faccma
+		cmp #$b5
+		bcc flogd
+flogc		inx
+		dey
+flogd		phx
+		sty faccx
+		jsr faddw
+		lda #< fwsd
+		jsr fstap
+		ldx #< flogtc
+		lda #< fsinc - 5; last coeff
+		ldy #((fsinc - flogtc) / 5 - 3) / 2
+		jsr fcf
+		lda #< fwsd
+		jsr acmul + 2
+		jsr fmul
+		jsr fadd
+		jsr starga;SAVE PARTIAL RESULT
+		pla;RECOVER EXPONENT BYTE
+		sec
+		sbc #$81
+		jsr fltacc;FLOAT 8 BIT ACC
+		lda #< logtwo
+		jsr cx;multiply by logtwo
+		jsr arga
+		jsr fadd
+fsqrtz		lda #$ff
+		rts
+sqr		jsr fltfac
+fsqrt		jsr ftst
+		beq fsqrtz;SQRT(0.0) EASY
+		bmi fsqrtn;bad -ve
+		lda faccx
+		lsr
+		php
+		adc #$41
+		sta faccx
+		plp
+		bcc fsqrta
+		lsr faccma
+		ror faccmb
+		ror faccmc
+		ror faccmd
+		ror faccmg
+fsqrta		jsr fclrw
+		stz ftmpmb
+		stz ftmpmc
+		stz ftmpmd
+		stz ftmpmg
+		lda #$40
+		sta fwrkma
+		sta ftmpma
+		ldx #- 5
+		ldy #$10
+		sec
+		lda faccma
+		sbc #$40
+		sta faccma
+fsqrtb		tya
+		eor fwrkma + 5, x
+		sta ftmpma + 5, x
+		lda faccma
+		cmp ftmpma
+		bne fsqrtp + 1
+		phx
+		ldx #- 4
+fsqrth		lda faccmb + 4, x
+		cmp ftmpmb + 4, x
+		bne fsqrtp
+		inx
+		bne fsqrth
+fsqrtp		plx
+		bcc fsqrtd - 4
+		lda faccmg
+		sbc ftmpmg
+		sta faccmg
+		lda faccmd
+		sbc ftmpmd
+		sta faccmd
+		lda faccmc
+		sbc ftmpmc
+		sta faccmc
+		lda faccmb
+		sbc ftmpmb
+		sta faccmb
+		lda faccma
+		sbc ftmpma
+		sta faccma
+		tya
+		asl
+		bcc fsqrtd
+		inc;Y had only 1 bit=1 & was therefore bit 0
+		eor fwrkma + 4, x
+		sta fwrkma + 4, x
+		sta ftmpma + 4, x
+		lda fwrkma + 5, x
+		bra fsqrte
+fsqrtd		eor fwrkma + 5, x
+		sta fwrkma + 5, x
+fsqrte		sta ftmpma + 5, x
+		asl faccmg
+		rol faccmd
+		rol faccmc
+		rol faccmb
+		rol faccma
+		tya
+		lsr
+		tay
+		bcc fsqrtb
+		ldy #$80
+		inx
+		bne fsqrtb
+		jsr fmwtoa
+nrmtdy		lda faccma
+		bmi nrmtd2
+		jsr fnrm + 4
+nrmtd2		jsr ftidy
+		lda #$ff
+		rts
+; FCF evaluates a continued rational fraction a+b/x^-1+c+d/x^-1
+; in Y is (length-3)/2, in A is address of last coeff
+; the table (initial pointer in X) is in reverse order
+fcf		sty frdddp;save length
+		stx coefp
+		ldx faccx
+		cpx #$40
+		bcc fcfa; small number test (includes 0)
+		jsr frecip
+		jsr starga;save 1/x
+		lda coefp
+		jsr setcof
+		jsr fadd
+fcfb		jsr fcfcom
+		jsr arga
+		jsr fadd
+		dec frdddp
+		bne fcfb
+fcfcom		lda #> flogtc
+		sta argp + 1
+		jsr fcfstp
+		jsr fxdiv
+		jsr fcfstp
+		jmp fadd
+fcfa		jsr setcof
+		jmp flda
+acs		jsr asn
+		bra pisub
+asn		jsr fltfac
+		lda faccs
+		bpl asina
+		stz faccs
+		jsr asina
+		bra setneg;a=&ff
+asina		jsr stargc
+		jsr sqrone
+		lda faccma
+		beq asinaa
+		jsr acdiv
+		bra fatan
+asinaa		lda #< halfpi
+		jmp fcfa;returns a>&80 since non zero
+;   FATAN COMPUTES ARCTANGENT. METHOD:
+;   (A) ATAN(-X) = - ATAN(X)
+;   (B) IF X>1.0 USE ATAN(X)=PI/2 - ATAN(1/X)
+;   (C0) IF X<0.0001 RESULTIS X ELSE ...
+;   (C1) LET Y=(X-0.5), SO Y IS IN RANGE -0.5 TO 0.5
+;   (D) COMPUTE SERIES IN Y SO THAT IT GIVES ATAN(X)/X
+;   (E) MULTIPLY BY X TO GET RESULT
+;   (F) (PUT BACK PI/2 AND '-')
+atn		jsr fltfac
+fatan		jsr ftst
+		beq fatanz
+		bpl fatana
+		stz faccs;FORCE +VE
+		jsr fatana;ATAN(-X)
+setneg		sta faccs;NEGATE AT END, A known negative since fp calcn done
+		rts
+fatana		lda faccx
+		cmp #$81;IS ACC>=1.0 ?
+		bcc fatanb;NO IT ISNT
+		jsr frecip
+		jsr fatanb;ATAN(1/X)
+pisub		jsr arghpi
+		jsr fxsub
+		lda #$ff
+		rts
+fatanb		lda faccx
+		cmp #$73
+		bcc fatanz;VERY SMALL NUMBER SO ATAN(X)=X TO M/C ACCURACY
+		jsr stargc;save arg away
+		jsr fclrw + 6
+		lda #$80
+		sta fwrkx
+		sta fwrkma
+		sta fwrks;W:=-0.5
+		jsr faddw
+;   NOW ACC IS IN (-0.5,0.5)
+		ldx #< fatanc
+		lda #< fexpco - 5
+		ldy #((fexpco - fatanc) / 5 - 3) / 2
+		jsr fcf;SUM MAGIC SERIES
+		jmp acmul;MULTIPLY BY ARG, EXIT (sets A=&ff)
+sin		clc;carry clear implies SIN
+cos		php;carry set on entry
+		jsr frange
+		plp
+		bcc fsc
+		inc fquad;if COS
+fsc		lda fquad
+		bit #2
+		beq fsca
+		jsr fsca
+		jmp fneg
+fsca		lsr
+		bcs sqrone
+fatanz		lda #$ff;1ST OR 2ND (+VE)
+		rts
+sqrone		jsr starga;SQR(1-ACC^2)
+		jsr fmul
+		lda #< fatanc - 5;1
+		jsr setcof
+		jsr fxsub
+		jmp fsqrt
+;   FRANGE SUBTRACTS AN INTEGRAL MULTIPLE OF PI/2 FROM ACC,
+;   AND SETS FQUAD TO INDICATE (MOD 4, AT LEAST) WHAT THE
+;   INTEGER WAS. NOTE THAT THE SUBTRACTION IS DONE WITH A
+;   CERTAIN DEGREE OF CARE SO THAT LARGE ARGUMENTS STILL GIVE
+;   DECENT ACCURACY.
+frange		jsr fltfac
+		lda faccx
+		cmp #$98
+		bcs frngqq;ARG TOO BIG (mag >= 2^23)
+		jsr starga;save arg away
+		jsr arghpi;PI/2
+		jsr fldw
+		lda faccs
+		sta fwrks
+		dec fwrkx;PI/4*SGN(INPUT)
+		jsr faddw
+		lda #< f2dpi
+		jsr cx;multiply by 2/PI
+; Note that the above calculation only needs to be right to a few bits
+		jsr ifix;Get integer (in range FF000000 to FFFFFF)
+		sta fquad;L.S. BYTE OF ACC in A
+		ora iaccm
+		ora iaccn
+		beq frngd;FIX(A/(PI/2))=0 (only 3 bytes significant)
+		jsr iflt + 4;float knowing faccmg, faccxh clear
+		lda #<fwsb
+		jsr fstap
+		lda #< hpihi
+		jsr cx
+		jsr arga
+		jsr fadd
+		jsr fsta
+		lda #<fwsb
+		jsr fldarg
+		lda #< hpilo
+		jsr cx
+		jsr arga
+		jsr fadd
+		bra fsccom
+frngd		jsr ldarga
+fsccom		jsr stargc
+		jsr fmul
+		ldx #< fsinc
+		lda #< fatanc - 5
+		ldy #((fatanc - fsinc) / 5 - 3) / 2
+		jsr fcf;EVALUATE APPROXIMATION X*(SIN(X)/X)
+acmul		lda #<fwsc
+		ldy #> fwsc;multiply by any fws at ACMUL+2
+		sty argp + 1;multiply by anything in AY at ACMUL+4
+		sta argp
+		jsr fmul
+		lda #$ff
+		rts
+frngqq		brk
+	!tx $17
+	!tx "Accuracy lost"
+fexpc		brk
+	!tx $18
+	!tx "Exp range"
+		brk
+rad		jsr fltfac
+		lda #< fpid18
+		bra cx
+log		jsr ln
+		lda #< rpln10
+cx		ldy #> hpihi
+		bra acmul + 4
+deg		jsr fltfac
+		lda #< f180dp
+		bra cx
+;   FEXP ALGORITHM:
+;   (A) IF ABS(ARG) > 89.5 (APPROX)
+;     THEN GIVE UNDER/OVERFLOW.
+;   (B) LET P=NEAREST INTEGER
+;       TO ARG, AND F BE RESIDUE.
+;     (IF ABS(X)<0.5 TO START
+;     WITH COMPUTE THIS QUICKLY)
+;   (C) COMPUTE EXP(P) AS POWER
+;       OF E=2.71828...
+;   (D) NOTE ABS(F)<=0.5
+;       COMPUTE EXP(F) BY C.F.
+;   (E) COMBINE PARTIAL RESULTS
+exp		jsr fltfac
+fexp		lda faccx
+		cmp #$87
+		bcc fexpa;CERTAINLY IN RANGE
+		bne fexpb;CERTAINLY NOT
+		ldy faccma
+		cpy #$b3
+		bcc fexpa;IN RANGE, AT LEAST NEARLY
+fexpb		lda faccs
+		bpl fexpc;OVERFLOW CASE
+		jmp fclr;RETURN ZERO, status and A -ve since unchanged
+fexpa		jsr ffrac;GET FRACTIONAL PART
+		ldx #< fexpco
+		lda #< zeend - 5
+		ldy #((zeend - fexpco) / 5 - 3) / 2
+		jsr fcf;SUM CONTINUED FRACTION FOR EXP(FRACTION)
+		jsr stargc;save it away
+		lda #< fnume
+		jsr fcfa
+		lda fquad
+		jsr fipow;e^N
+		bra acmul
+	;!source cbas09

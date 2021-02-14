@@ -1,0 +1,23 @@
+;ACME 0.97
+
+!macro assert @condition {
+	!if @condition == 0 {
+		!error "assertion failed"
+	}
+}
+
+	!cpu 65c02
+	!to "CBasObj", plain
+
+	!src "part01.a"
+	!src "part02.a"
+	!src "part03.a"
+	!src "part04.a"
+	!src "part05.a"
+	!src "part06.a"
+	!src "part07.a"
+	!src "part08.a"
+	!src "part09.a"
+	!src "part10.a"
+	!src "part11.a"
+	!src "part12.a"

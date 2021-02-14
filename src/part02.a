@@ -1,0 +1,847 @@
+;ACME 0.97
+
+;                                    FILE 3  address tables, assembler > CBAS02
+
+adtabl	!wo openu
+
+	!wo rptr
+	!wo rpage
+	!wo rtime
+	!wo rlomem
+	!wo rhimem
+
+	!wo abs
+	!wo acs
+	!wo adc_
+	!wo asc
+	!wo asn
+	!wo atn
+	!wo bget
+	!wo cos
+	!wo count
+	!wo deg
+	!wo erl
+	!wo err
+	!wo eval
+	!wo exp
+	!wo ext
+	!wo false
+	!wo fn
+	!wo get
+	!wo inkey
+	!wo instr
+	!wo int
+	!wo len
+	!wo ln
+	!wo log
+	!wo not_
+	!wo openi
+	!wo openo
+	!wo pi
+	!wo point
+	!wo pos
+	!wo rad
+	!wo rnd
+	!wo sgn
+	!wo sin
+	!wo sqr
+	!wo tan
+	!wo to
+	!wo true
+	!wo usr
+	!wo val
+	!wo vpos
+	!wo chrd
+	!wo getd
+	!wo inked
+	!wo leftd
+	!wo midd
+	!wo rightd
+	!wo strd
+	!wo strnd
+	!wo eof
+
+	!wo auto
+	!wo delete
+	!wo load
+	!wo list
+	!wo new
+	!wo old
+	!wo renum
+	!wo save
+	!wo edit
+
+	!wo lptr
+	!wo lpage
+	!wo ltime
+	!wo llomm
+	!wo lhimm
+	!wo beep
+	!wo bput
+	!wo call
+	!wo chain
+	!wo clear
+	!wo close
+	!wo clg
+	!wo cls
+	!wo data
+	!wo def
+	!wo dim
+	!wo draw
+	!wo end
+	!wo endpr
+	!wo envel
+	!wo for
+	!wo gosub
+	!wo goto
+	!wo graph
+	!wo if
+	!wo input
+	!wo let
+	!wo local
+	!wo modes
+	!wo move
+	!wo next
+	!wo on
+	!wo vdu
+	!wo plot
+	!wo print
+	!wo proc
+	!wo read
+	!wo rem
+	!wo repeat
+	!wo report
+	!wo restore
+	!wo return
+	!wo run
+	!wo stop
+	!wo texts
+	!wo trace
+	!wo until
+	!wo width
+
+	!wo oscl
+
+mneml	!tx $4b;brk-tya
+	!tx $83
+	!tx $84
+	!tx $89
+	!tx $96
+	!tx $b8
+	!tx $b9
+	!tx $d8
+	!tx $d9
+	!tx $f0
+	!tx $01
+	!tx $10
+	!tx $81
+	!tx $90
+	!tx $89
+	!tx $93
+	!tx $a3
+	!tx $a4
+	!tx $a9
+	!tx $38
+	!tx $39
+	!tx $78
+	!tx $01
+	!tx $13
+	!tx $21
+	!tx $a1
+	!tx $c1;ina
+	!tx $19;phy
+	!tx $18;phx
+	!tx $99;ply
+	!tx $98;plx
+
+	implied	= * - mneml
+
+	!tx $63;bcc-bvs
+	!tx $73
+	!tx $b1
+	!tx $a9
+	!tx $c5
+	!tx $0c
+	!tx $c3
+	!tx $d3
+	!tx $41;bra
+
+	branch	= * - mneml
+
+	!tx $c4;and
+	!tx $f2;eor
+	!tx $41;ora
+	!tx $83;adc
+	!tx $b0;cmp
+	!tx $81;lda
+	!tx $43;sbc
+
+	group1	= * - mneml
+
+	!tx $6c;asl ror
+	!tx $72
+	!tx $ec
+	!tx $f2
+
+	aslror	= * - mneml
+
+	!tx $a3;dec inc
+	!tx $c3
+
+	decinc	= * - mneml
+
+	!tx $92;clr/stz
+	!tx $9a
+
+	copclr	= * - mneml
+
+	!tx $18;cpx cpy
+	!tx $19
+	cpxcpy	= * - mneml
+	!tx $62;tsb trb
+	!tx $42
+	tsbtrb	= * - mneml
+	!tx $34;bit
+	!tx $b0;jmp
+	!tx $72;jsr
+	jsrjmp	= * - mneml
+	!tx $98;ldx
+	!tx $99;ldy
+	copsta	= * - mneml
+	!tx $81;sta
+	!tx $98;stx
+	!tx $99;sty
+
+	psuedo	= * - mneml
+
+	!tx $14;opt
+
+	!tx $35;equ
+	allops	= * - mneml
+mnemr	!tx $0a
+	!tx $0d
+	!tx $0d
+	!tx $0d
+	!tx $0d
+	!tx $10
+	!tx $10
+	!tx $25
+	!tx $25
+	!tx $39
+	!tx $41
+	!tx $41
+	!tx $41
+	!tx $41
+	!tx $4a
+	!tx $4a
+	!tx $4c
+	!tx $4c
+	!tx $4c
+	!tx $50
+	!tx $50
+	!tx $52
+	!tx $53
+	!tx $53
+	!tx $53
+	!tx $10
+	!tx $25
+	!tx $41
+	!tx $41
+	!tx $41
+	!tx $41
+
+	!tx $08
+	!tx $08
+	!tx $08
+	!tx $09
+	!tx $09
+	!tx $0a
+	!tx $0a
+	!tx $0a
+	!tx $0a
+
+	!tx $05
+	!tx $15
+	!tx $3e
+	!tx $04
+	!tx $0d
+	!tx $30
+	!tx $4c
+
+	!tx $06
+	!tx $32
+	!tx $49
+	!tx $49
+
+	!tx $10
+	!tx $25
+
+	!tx $0d
+	!tx $4e
+
+	!tx $0e
+	!tx $0e
+
+	!tx $52
+	!tx $52
+
+	!tx $09
+
+	!tx $29
+
+	!tx $2a
+
+	!tx $30
+
+	!tx $30
+
+	!tx $4e
+
+	!tx $4e
+
+	!tx $4e
+
+	!tx $3e
+
+	!tx $16
+stcode	!tx $00
+	!tx $18
+	!tx $d8
+	!tx $58
+	!tx $b8
+	!tx $ca
+	!tx $88
+	!tx $e8
+	!tx $c8
+	!tx $ea
+	!tx $48
+	!tx $08
+	!tx $68
+	!tx $28
+	!tx $40
+	!tx $60
+	!tx $38
+	!tx $f8
+	!tx $78
+	!tx $aa
+	!tx $a8
+	!tx $ba
+	!tx $8a
+	!tx $9a
+	!tx $98
+	!tx $3a
+	!tx $1a
+	!tx $5a
+	!tx $da
+	!tx $7a
+	!tx $fa
+
+	!tx $90
+	!tx $b0
+	!tx $f0
+	!tx $30
+	!tx $d0
+	!tx $10
+	!tx $50
+	!tx $70
+	!tx $80
+
+	!tx $21
+	!tx $41
+	!tx $01
+	!tx $61
+	!tx $c1
+	!tx $a1
+	!tx $e1
+
+	!tx $06
+	!tx $46
+	!tx $26
+	!tx $66
+
+	!tx $c6
+	!tx $e6
+
+	!tx $9c
+	!tx $9c
+
+	!tx $e0
+	!tx $c0
+
+	!tx $00
+	!tx $10
+
+	!tx $24;bit
+
+	!tx $4c
+
+	!tx $20
+
+	!tx $a2
+
+	!tx $a0
+
+	!tx $81
+
+	!tx $86
+
+	!tx $84
+stopasm		dec; a was 0
+		sta bytesm
+		jmp stmt
+casm		jsr spaces
+		eor #"]"
+		beq stopasm
+		jsr clyadp
+		dec cursor
+		jsr mneent
+		dec cursor
+		lda bytesm
+		lsr
+		bcc nolist
+		lda tally
+		adc #4
+		sta work + 8;5+current position
+		lda work + 1
+		jsr hexout
+		lda work
+		jsr hexsp
+		ldx #$fc
+		ldy work + 2
+		bpl wrtlop
+		ldy clen
+wrtlop		sty work + 1
+		beq rmove
+		ldy #0
+wrtlpy		inx
+		bne wrtlpa
+		jsr nline
+		ldx work + 8
+		jsr listpl
+		ldx #$fd
+wrtlpa		lda (work + 3), y
+		jsr hexsp
+		iny
+		dec work + 1
+		bne wrtlpy
+rmove		txa
+		tay
+rmovel		iny
+		beq lllll
+		ldx #3
+		jsr listpl
+		bra rmovel
+lllll		ldx #10
+		lda (line)
+		cmp #"."
+		bne nolabl
+ltlabl		jsr tokout
+		dex
+		bne malabl
+		ldx #1
+malabl		iny;y was 0
+		lda (line), y
+		cpy newvar
+		bne ltlabl
+nolabl		jsr listpl
+		dey
+lablsp		iny
+		cmp (line), y
+		beq lablsp
+llll		lda (line), y
+		cmp #":"
+		beq nocoda
+		cmp #$0d
+		beq nocod
+llllll		jsr tokout
+		iny
+		bra llll
+nocoda		cpy cursor
+		bcc llllll
+nocod		jsr nline
+nolist		ldy cursor
+		dey
+nola		iny
+		lda (line), y
+		cmp #":"
+		beq nolb
+		cmp #$0d
+		bne nola
+nolb		jsr done + 2
+		lda (line)
+		cmp #":"
+		beq casmj
+		lda line + 1
+		cmp #> buffer
+		bne intxt
+		jmp clrstk
+intxt		jsr lino
+casmj		jmp casm
+setl		jsr craelv
+		beq assded
+		bcs assded
+		jsr phaddr
+		jsr getpc
+		sta type
+		jsr store
+		jsr ascur
+		sty newvar
+mneent		jsr spaces
+		ldy #0;number of bytes
+		stz work + 6
+		cmp #":"
+		beq mmmm
+		cmp #$0d
+		beq mmmm
+		cmp #"\\"
+		beq mmmm
+		cmp #"."
+		beq setl
+		dec cursor
+		ldx #3
+rdlup		ldy cursor
+		inc cursor
+		lda (line), y
+		bmi rdslpt
+		cmp #" "
+		beq rdout
+		ldy #5
+		asl
+		asl
+		asl
+inlup		asl
+		rol work + 6
+		rol work + 7
+		dey
+		bne inlup
+		dex
+		bne rdlup
+rdout		ldx #allops
+		lda work + 6
+srchm		cmp mneml - 1, x
+		bne notgot
+		ldy mnemr - 1, x
+		cpy work + 7
+		beq rdopgt
+notgot		dex
+		bne srchm
+assded		jmp stded
+rdslpt		ldx #branch + 1
+		cmp #tand
+		beq rdopgt
+		inx
+		cmp #teor
+		beq rdopgt
+		inx
+		cmp #tor
+		bne assded
+		inc cursor
+		iny
+		lda (line), y
+		and #$df
+		cmp #"A"
+		bne assded
+rdopgt		lda stcode - 1, x
+		sta opcode
+		ldy #1
+		cpx #implied + 1
+		bcs ngpone
+mmmm		lda pc
+		sta work
+		sty work + 2
+		ldx bytesm
+		cpx #4
+		ldx pc + 1
+		stx work + 1
+		bcc mmmmlr
+		lda pc - 4
+		ldx pc - 3
+mmmmlr		sta work + 3
+		stx work + 4
+		tya
+		beq mmmmrt
+		bpl mmmmlp
+		ldy clen
+		beq mmmmrt
+mmmmlp		dey
+		lda opcode, y
+		bit work + 2
+		bpl mmmmcl
+		lda stracc, y
+mmmmcl		sta (work + 3), y
+		inc pc
+		bne mmmmlq
+		inc pc + 1
+mmmmlq		bcc mmmmpp
+		inc pc - 4
+		bne mmmmpp
+		inc pc - 3
+mmmmpp		tya
+		bne mmmmlp
+mmmmrt		rts
+ngpone		cpx #branch + 1
+		bcs ngptwo
+		jsr asexpr
+		clc
+		lda iaccl
+		sbc pc
+		tay
+		lda iaccm
+		sbc pc + 1
+		cpy #1
+		dey
+		sbc #0
+		beq fwd
+		inc;CMPIM &FF
+		bne bor
+		tya;branch in range backward
+		bmi brsto
+bor		lda bytesm
+		and #2
+		beq brstor
+		brk
+	!tx 1
+	!tx "Out of range"
+		brk
+fwd		tya
+		bmi bor
+brstor		tay
+brsto		sty opcode + 1
+brst		ldy #2
+		jmp mmmm
+ngptwo		cpx #group1 + 1
+		bcs ngpthr
+		jsr chkhsh
+		bne nothsh
+		jsr plus8
+immed		jsr asexpr
+indinx		lda iaccm
+		beq brst
+byte		brk
+	!tx 2
+	!tx "Byte"
+		brk
+ngpthr		cpx #copsta + 1
+		bne nopsta
+		jsr spaces;sta as others in group3 but for #
+nothsh		cmp #"("
+		bne notind
+		jsr asexpr
+		jsr spaces
+		cmp #")"
+		bne ininx
+		jsr plus10
+		jsr chkcom
+		beq ininy
+		inc opcode
+		bra indinx
+ininy		jsr spaces
+		and #$df
+		cmp #"Y"
+		beq indinx
+		bra badind
+ininx		cmp #","
+		bne badind
+		jsr chkx
+		bne badind
+		jsr spaces
+		cmp #")"
+		beq indinx
+badind		brk
+	!tx 3
+	!tx "Index"
+		brk
+notind		jsr adexpr
+		jsr chkcom
+		bne optim
+		jsr plus10
+		jsr chkx
+		beq optim
+		cmp #"Y"
+		bne badind
+unopt		jsr plus8
+		jmp jsrb
+optim		jsr plus4
+optima		lda iaccm
+		bne unopt
+		bra indinx + 2; BRA BRST really
+nopsta		cpx #decinc + 1
+		bcs ngpfr
+		jsr spaces
+		and #$df
+		cmp #"A"
+		beq accum
+notacc		jsr adexpr
+		jsr chkcom
+		bne optima
+		jsr plus10
+		jsr chkx
+		beq optima
+badinj		bra badind
+accum		iny
+		lda (line), y
+		jsr wordcq
+		bcs notacc
+		ldy #$1a - 4
+		cpx #aslror + 1
+		bcc accums
+		bne accumc
+		ldy #$3a - 4
+accumc		sty opcode
+accums		jsr plus4
+		ldy #1
+		bra jsrc
+ngpfr		cpx #copclr + 1
+		bcs notclr
+		jsr asexpr
+		ldy #3
+		ldx #2 - 1
+		lda iaccm
+		bne clropt
+		ldx #$10 - 1
+		lda #$64
+		sta opcode
+		dey
+clropt		phy
+		jsr chkcom
+		bne clrops
+		jsr chkx
+		bne badinj
+		txa
+		adc opcode
+		sta opcode
+clrops		ply
+		bra jsrc
+notclr		cpx #tsbtrb + 1
+		bcs ngpfv
+		cpx #cpxcpy + 1
+		bcs trsb
+		jsr chkhsh
+		beq immedj
+		dec cursor
+trsb		jsr asexpr
+optimj		bra optim
+bit_		jsr chkhsh
+		bne notacc
+		ldy #$89
+		sty opcode
+immedj		jmp immed
+ngpfv		beq bit_
+		cpx #jsrjmp
+		beq jsr_
+		bcs ngpsx
+		jsr spaces
+		cmp #"("
+		beq jsra
+		dec cursor
+jsr_		jsr asexpr
+jsrb		ldy #3
+jsrc		jmp mmmm
+jsra		jsr plus10
+		jsr plus10
+		jsr asexpr
+		jsr spaces
+		cmp #")"
+		beq jsrb
+		cmp #","
+		bne badink
+		jsr plus10
+		jsr chkx
+		bne badink
+		jsr spaces
+		cmp #")"
+		beq jsrb
+badink		jmp badind
+ngpsx		cpx #psuedo + 1
+		bcs option
+		lda work + 6
+		eor #1
+		and #$1f;get x or y value
+		pha
+		cpx #copsta + 1
+		bcs stxy
+		jsr chkhsh
+		bne ldxy
+		pla
+		bra immedj
+ldxy		jsr adexpr
+		pla
+		sta work
+		jsr chkcom
+		bne optimj
+		jsr spaces;ldx,y indexed
+		and #$1f
+		cmp work
+		bne badink
+		jsr plus10
+		bra optimj
+stxy		jsr asexpr
+		pla
+		sta work
+		jsr chkcom
+		bne goop
+		jsr spaces
+		and #$1f
+		cmp work
+		bne badink
+		jsr plus10
+		lda iaccm
+		beq goop
+		jmp byte
+goop		jmp optima
+option		bne equbws
+		jsr asexpr
+		lda iaccl
+		sta bytesm
+		ldy #0
+		bra equsx
+equbws		ldx #1
+		ldy cursor
+		inc cursor
+		lda (line), y
+		and #$df
+		cmp #"B"
+		beq equb
+		inx
+		cmp #"W"
+		beq equb
+		ldx #4
+		cmp #"D"
+		beq equb
+		cmp #"S"
+		beq equs
+		jmp stded
+equb		phx
+		jsr asexpr
+		ldx #opcode
+		jsr acctom
+		ply
+equsx		jmp mmmm
+equse		jmp letm
+equs		lda bytesm
+		pha
+		jsr aeexpr
+		bne equse
+		pla
+		sta bytesm
+		jsr ascur
+		ldy #$ff
+		bra equsx
+plus10		jsr plus8
+plus8		jsr plus4
+plus4		lda opcode
+		clc
+		adc #4
+		sta opcode
+		rts
+chkx		jsr spaces
+		and #$df
+		cmp #"X"
+		rts
+chkhsh		jsr spaces
+		cmp #"#"
+		rts
+chkcom		jsr spaces
+		cmp #","
+		rts
+	;!source cbas03

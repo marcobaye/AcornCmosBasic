@@ -1,0 +1,576 @@
+;ACME 0.97
+;                               FILE 4 match text subrs stmt > CBAS03
+
+intok		sta (work);insert token in A into line
+		clc
+		tya
+		adc work
+		sta work + 2
+		ldy #0
+		tya
+		adc work + 1
+		sta work + 3
+intoka		iny;replace
+		lda (work + 2), y
+		sta (work), y
+		cmp #$0d
+		bne intoka;move rest of line down
+		rts
+constq		and #$0f;check if a constant
+		sta work + 6
+		ldx #0;high byte in X
+		ldy #0
+constr		iny
+		lda (work), y
+		jsr numbcp
+		bcc constx
+		and #$0f
+		pha
+		stx work + 7
+		lda work + 6
+		asl
+		rol work + 7
+		bmi consty
+		asl
+		rol work + 7
+		bmi consty
+		adc work + 6
+		sta work + 6
+		txa
+		adc work + 7
+		asl work + 6
+		rol
+		bmi consty
+		bcs consty
+		tax
+		pla
+		adc work + 6
+		sta work + 6
+		bcc constr
+		inx
+		bpl constr
+		pha
+consty		pla;>32767 so can't be
+		sec
+		rts
+constx		dey
+		lda #tconst
+		jsr intok;keeps X
+		lda work
+		sta work + 2
+		lda work + 1
+		sta work + 3
+		jsr nextch
+		jsr nextch
+		jsr nextch
+constl		lda (work + 2), y
+		sta (work), y
+		dey
+		bne constl;y<>0 initially since at least tconst cr
+		ldy #3
+consti		txa;insert constant, high in X, low in WORK+6
+		ora #$40
+		sta (work + 2), y
+		dey
+		lda work + 6
+		and #$3f
+		ora #$40
+		sta (work + 2), y
+		dey
+		lda #$c0 xor $ff
+		trb work + 6
+		txa
+		and #$c0
+		lsr
+		lsr
+		ora work + 6
+		lsr
+		lsr
+		eor #$54
+		sta (work + 2), y
+wordcn		clc
+		rts
+wordcq		cmp #$7b;check if character in A is wordc
+		bcs wordcn
+		cmp #"_"
+		bcs wordcy
+		cmp #$5b
+		bcs wordcn
+		cmp #"A"
+		bcs wordcy
+numbcp		cmp #$3a
+		bcs wordcn
+		cmp #"0";bcs wordcy;bcc wordcn reduced somewhat!
+wordcy		rts
+numbcq		cmp #"."
+		bne numbcp
+		rts
+getwrk		lda (work)
+nextch		inc work
+		bne relrts
+		inc work + 1
+		rts
+getwk2		jsr nextch
+		lda (work)
+		rts
+matchb		jsr nextch
+matcha		lda (work)
+		cmp #$0d
+		beq relrts;if ch='cr' end
+		cmp #" "
+		beq matchb;if ch=' ' then nextch
+		cmp #"&"
+		bne cmatch;if ch='&' then
+matchc		jsr getwk2;repeat nextch
+		jsr numbcp;until ch<'0' or ch>'9' and ch <'A' or ch>'F'
+		bcs matchc
+		cmp #"A"
+		bcc matcha
+		cmp #"G"
+		bcc matchc;if carry set >="G" goto matcha, but ends up at cmatch anyway
+cmatch		cmp #'"'
+		bne dmatch;if ch='"' then
+matchd		jsr getwk2;repeat nextch
+		cmp #'"';until ch='cr' or ch='"'
+		beq matchb
+		cmp #$0d
+		bne matchd
+relrts		rts
+dmatch		cmp #":"
+		bne matche;if ch=':'
+		jsr nextch
+match		stz mode
+matcev		stz consta
+		bra matcha;mode:=left;constant:=false;nextch;matcha
+matche		cmp #","
+		beq matchb;if ch=',' then nextch;matcha
+		cmp #"*"
+		bne fmatch;if ch='*'
+		lda mode
+		beq relrts;and mode=left then end
+ymatch		ldx #$ff
+		stx mode;mode:=right
+		stz consta;const:=false
+		bra matchb
+fmatch		cmp #"."
+		beq matchz
+		jsr numbcp
+		bcc gmatch;if ch>="0"' and ch<='9'
+		ldx consta
+		beq matchz;if constant=true
+		jsr constq
+		bcc matchb
+matchz		lda (work);not found numeric:- while numbcq
+		jsr numbcq
+		bcc matchy
+		jsr nextch;do nextch
+		bra matchz
+matchy		ldx #$ff
+		stx mode
+		bra matcev
+matchw		jsr wordcq
+		bcc ymatch
+matchg		lda (work);not found:- while wordcq
+		jsr wordcq
+		bcc matchy
+		jsr nextch;do nextch
+		bra matchg
+gmatch		cmp #"A";lookupword (optimised for none present words)
+		bcc ymatch
+		cmp #"X"
+		bcs matchw
+		ldx #< tokens
+		stx work + 2
+		ldx #> tokens
+		stx work + 3;list start
+imatch		ldy #0
+		cmp (work + 2);special check on first char
+		bcc matchg
+		bne jmatch
+kmatch		iny
+		lda (work + 2), y
+		bmi lmatch
+		cmp (work), y
+		beq kmatch
+		lda (work), y
+		cmp #"."
+		beq abbrev
+jmatch		iny
+		lda (work + 2), y
+		bpl jmatch
+		cmp #twidth;last token in list
+		bne mmatch
+		bcs matchg
+abbrev		iny
+abbrea		lda (work + 2), y
+		bmi lmatch
+		inc work + 2
+		bne abbrea
+		inc work + 3
+		bra abbrea
+mmatch		sec
+		iny
+		tya
+		adc work + 2
+		sta work + 2
+		bcc nmatch
+		inc work + 3
+nmatch		lda (work)
+		bra imatch
+lmatch		tax;token held in x for now
+		iny
+		lda (work + 2), y
+		sta work + 6;job to work+6
+		dey
+		lsr
+		bcc omatch;if job and 1
+		lda (work), y
+		jsr wordcq;if ch+1 = wordc
+		bcs matchg
+omatch		txa;carry clear at OMATCH
+		bit work + 6
+		bvc wmatch;if job and 64
+		ldx mode
+		bne wmatch;and mode=left
+		adc #tptr2 - $8f
+wmatch		dey
+		jsr intok
+		ldx #$ff
+		lda work + 6
+		lsr
+		lsr
+		bcc qmatch;if job and 2
+		stx mode;mode:=right
+		stz consta;constant:=false
+qmatch		lsr
+		bcc rmatch;if job and 4
+		stz mode;mode:=left
+		stz consta;constant:=false
+rmatch		lsr
+		bcc tmatch;if job and 8
+		pha
+		ldy #1
+smatch		lda (work), y;while ch+1=wordc
+		jsr wordcq
+		bcc xmatch
+		jsr nextch
+		bra smatch
+xmatch		pla
+tmatch		lsr
+		bcc umatch
+		stx consta
+umatch		lsr
+		bcs aespar;if job and 32 end
+		jmp matchb
+aespac		ldy aecur;get next character from the aeline,aecur
+		inc aecur
+		lda (aeline), y
+		cmp #" "
+		beq aespac
+aespar		rts
+spaces		ldy cursor;get next character from the line, cursor
+		inc cursor
+		lda (line), y
+		cmp #" "
+		beq spaces
+comrts		rts
+comchk		jsr aespac;check for a , in aeline and give error if none
+		cmp #","
+		rts
+comeat		jsr comchk
+		beq comrts
+comerr		brk
+	!tx 5
+	!tx $8d , ","
+		brk
+chain		jsr loader
+		bra runner
+;  old command does ?&3001=0 finds new end of text and frees
+old		jsr done
+		lda txtp
+		sta work + 1
+		stz work
+		lda #0
+		sta (work), y
+		jsr ender
+		bra fsaset
+run		jsr done
+runner		jsr setfsa
+		lda txtp
+		sta line + 1
+		stz line
+		bra runthg
+load		jsr loader
+		bra fsaset
+;  end statement finds end of text and stops
+end		jsr done
+		jsr ender
+		bra clrstk
+entryy		lda #$f2
+		jsr sinstk
+		jsr readbyte
+		tax
+		jsr readbyte
+		sta iaccm
+		stx iaccl
+		ldx #20
+entryl		dex
+		beq format
+		jsr readbyte
+		cmp #$0d
+		beq format
+		cmp #"@"
+		bne entryl
+		jsr readbyte
+		cmp #$0d
+		bne format;check for special *BASIC @
+		jsr fromat
+; CLR LOMEM
+; LDA TXTP
+; INA
+; STA LOMEM+1 ;done for the interpreter by the editor
+entryt		ldy #0
+		stz line
+		lda #> buffer
+		sta line + 1
+entrym		lda (lomem)
+		beq fsaset
+		sta (line), y
+		iny
+		beq format
+		inc lomem
+		bne * + 4
+		inc lomem + 1
+		cmp #$0d
+		bne entrym
+		lda lomem + 1
+		cmp himem + 1
+		bcs fsaset
+		jsr superbit
+		bra entryt
+;  new command clears text and frees
+new		jsr done
+format		jsr fromat
+fsaset		jsr setfsa
+clrstk		ldy #> buffer
+		sty line + 1
+		stz line;BUFFER=0
+		jsr orderr
+		lda #">"
+		jsr oswrch
+		jsr buff
+runthg		ldx #$ff
+		txs
+		jsr orderr;set up to run something
+		jsr superbit
+		bcs fsaset
+		bra dc
+;  call operating system statement
+dos		jsr clyadp
+		ldx line
+		ldy line + 1
+		jsr oscli
+data;data statement ignored
+def;def statement ignored
+rem		lda #$0d
+		ldy cursor
+		dey
+ilp		iny
+		cmp (line), y
+		bne ilp
+elseln		jsr clyadp
+		bra crline
+endedl		cmp #13
+		bne rem
+crline		lda line + 1
+		cmp #> buffer
+		beq clrstk
+		ldy #1
+		lda (line), y
+		bmi clrstk
+		ldx trflag
+		beq notr2
+		sta iaccm
+		iny
+		lda (line), y
+		sta iaccl
+		jsr trjoba
+notr2		ldy #4
+		sty cursor
+		bra stmt + 2
+ass		lda #3
+		sta bytesm
+		jmp casm
+setexj		jmp setext
+otstmt		ldy cursor
+		dey
+		lda (line), y
+		cmp #"*"
+		beq dos
+		cmp #"["
+		beq ass
+		cmp #text
+		beq setexj
+		cmp #"="
+		beq fnret
+sunk		dec cursor
+donext		jsr done
+nxt		lda (line)
+		cmp #":"
+		bne endedl
+stmt		ldy cursor;statement execution
+		inc cursor
+		lda (line), y
+		cmp #" "
+		beq stmt
+		cmp #tptr2;lowest poly
+		bcc letst
+dispatch		asl
+		tax
+		jmp (adtabl - $e - $e, x)
+dc		jsr spaces;direct mode command
+		cmp #tauto
+		bcs dispatch
+letst		ldx line
+		stx aeline
+		ldx line + 1
+		stx aeline + 1
+		sty aecur
+		jsr lvcont
+		bne gotlt
+		bcs otstmt
+		stx aecur
+		jsr eqeat
+		jsr create
+		ldx #5
+		cpx iaccn
+		bne letsz
+		inx
+letsz		jsr creax
+		dec cursor
+;  let statement
+let		jsr craelv
+		beq nolet
+gotlt		bcc leted
+		jsr phacc
+		jsr eqexpr
+		lda type
+		bne letm
+		jsr ststor
+		bra nxt
+fnret		tsx
+		cpx #$fc
+		bcs fnerr
+		lda $01ff
+		cmp #tfn
+		bne fnerr
+		jsr aeexpr
+		jmp fdone
+leted		lda iaccl;assign to number
+		pha
+		lda iaccm
+		pha
+		lda iaccn
+		pha
+		jsr eqexpr
+		jsr store
+		bra nxt
+nolet		jmp stded
+;  stop statement prints that it has stopped
+stop		jsr done
+		brk
+		brk
+	!tx tstop
+fnerr		brk
+	!tx 7
+	!tx "No " , tfn
+letm		brk
+	!tx 6
+	!tx "Type mismatch"
+allocr		brk
+		brk
+	!tx "No room"
+		brk
+ststor		jsr popacc;subr to store string where told
+ststre		lda iaccn
+		cmp #$80
+		beq nstr
+		ldy #2
+		lda (iaccl), y
+		cmp clen
+		bcs allocx;old mlen >= to new len
+		lda fsa
+		sta iaccn
+		lda fsa + 1
+		sta iacch
+		lda clen
+		cmp #8
+		bcc allocu;if <8 characters then use this as mlen
+		adc #7;else add 8
+		bcc allocu
+		lda #$ff;but max is 255
+allocu		clc
+		pha
+		tax
+		lda (iaccl), y;is new space contiguous to old?
+		adc (iaccl)
+		eor fsa
+		bne alljim
+		dey
+		adc (iaccl), y
+		eor fsa + 1
+		bne alljim
+		sta iacch;new space is, so reduce amount needed
+		txa
+		iny
+		sec
+		sbc (iaccl), y
+		tax
+alljim		txa
+		clc
+		adc fsa
+		tay
+		lda fsa + 1
+		adc #0
+		tax
+		cpy aestkp;are we hitting our heads on the roof?
+		sbc aestkp + 1
+		bcs allocr
+		sty fsa
+		stx fsa + 1
+		pla
+		ldy #2
+		sta (iaccl), y;new mlen
+		dey
+		lda iacch
+		beq allocx;we were contiguous
+		sta (iaccl), y
+		lda iaccn
+		sta (iaccl)
+allocx		ldy #3
+		lda clen
+		sta (iaccl), y
+		beq stdone
+		ldy #1
+		lda (iaccl), y
+		sta iacch
+		lda (iaccl)
+		sta iaccn
+		dey
+ltcvrm		lda stracc, y
+		sta (iaccn), y
+		iny
+		cpy clen
+		bne ltcvrm
+stdone		rts
+nstr		jsr osstrt
+		cpy #0
+		beq nstrx
+nsloop		lda stracc, y
+		sta (iaccl), y
+		dey
+		bne nsloop
+		lda stracc
+nstrx		sta (iaccl)
+		rts
+	;!source cbas04

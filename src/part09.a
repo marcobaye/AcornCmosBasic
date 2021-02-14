@@ -1,0 +1,678 @@
+;ACME 0.97
+;                                   FILE C     factor -> CBAS09
+inkea		jsr intfac
+		lda #$81
+		ldx iaccl
+		ldy iaccm
+		jmp osbyte
+frndaa		jsr frndab
+frnd		stz faccs
+		stz faccxh
+		stz faccmg
+		lda #$80
+		sta faccx
+		ldy #0
+		ldx #3
+mtofac		eor seed, y
+		sta faccma, x
+		iny
+		dex
+		bpl mtofac
+		jmp nrmtdy
+rndb		inc aecur
+		jsr intbra
+		lda iacch
+		bmi rndset
+		ora iaccn
+		ora iaccm
+		bne rndbb
+		lda iaccl
+		beq frnd
+		cmp #1
+		beq frndaa
+rndbb		jsr iflt
+		jsr phfacc
+		jsr frndaa
+		jsr popset
+		jsr ifmul
+		jsr ifix
+		jsr incacc
+		bra rptrx
+rndset		ldx #seed
+		jsr acctom
+		lda #$40
+		sta seed + 4
+		rts
+rnd		ldy aecur
+		lda (aeline), y
+		cmp #"("
+		beq rndb
+		jsr frndab
+		ldx #seed
+mtoacc		lda 0, x
+		sta iaccl
+		lda 1, x
+		sta iaccm
+		lda 2, x
+		sta iaccn
+		lda 3, x
+		sta iacch
+rptrx		lda #$40
+		rts
+not_		jsr intfac
+		ldx #3
+notlop		lda iaccl, x
+		eor #$ff
+		sta iaccl, x
+		dex
+		bpl notlop
+		bra rptrx
+pos		jsr vpos
+		stx iaccl
+		rts
+usr		jsr intfac
+		jsr user
+		sta iaccl
+		stx iaccm
+		sty iaccn
+		php
+		pla
+		sta iacch
+		cld
+		bra rptrx
+vpos		lda #$86
+		jsr osbyte
+		tya
+vposx		jmp sinstk
+ext		lda #2
+		bra rptr + 2
+rptr		lda #0
+		pha
+		jsr chann
+		ldx #iaccl
+		pla
+		jsr osargs
+		bra rptrx
+bget		jsr chann
+		jsr osbget
+		bra vposx
+openu		lda #$40
+		bra f
+openo		lda #$80
+		bra f
+openi		lda #$c0
+f		pha
+		jsr factor
+		bne opene
+		jsr osstrt
+		ldx #<stracc
+		ldy #> stracc
+		pla
+		jsr osfind
+		bra vposx
+opene		jmp letm
+pi		jsr asinaa
+		inc faccx;resets -ve status, A already negative and unharmed
+		rts
+eval		jsr factor
+		bne evale
+		inc clen
+		ldy clen
+		lda #$0d
+		sta stracc - 1, y
+		jsr phstr
+		lda aeline
+		pha
+		lda aeline + 1
+		pha
+		lda aecur
+		pha
+		ldy aestkp
+		ldx aestkp + 1
+		iny
+		sty aeline
+		sty work
+		bne evalx
+		inx
+evalx		stx aeline + 1
+		stx work + 1
+		jsr matchy
+		stz aecur
+		jsr expr
+		jsr popstx
+valout		pla
+		sta aecur
+		pla
+		sta aeline + 1
+		pla
+		sta aeline
+		lda type
+		rts
+evale		jmp letm
+val		jsr factor
+		bne evale
+valstr		ldx clen
+		stz stracc, x
+		lda aeline
+		pha
+		lda aeline + 1
+		pha
+		lda aecur
+		pha
+		stz aecur
+		stz aeline;(of course stracc=0)
+		lda #> stracc
+		sta aeline + 1
+		jsr aespac
+		cmp #"-"
+		beq valmin
+		cmp #"+"
+		bne valnub
+		jsr aespac
+valnub		dec aecur
+		jsr frdd
+		bra valtog
+valmin		jsr aespac
+		dec aecur
+		jsr frdd
+		bcc valtog
+		jsr valcmp
+valtog		sta type
+		bra valout
+int		jsr factor
+		beq facte
+		bpl intx
+		lda faccs
+		php
+		jsr ffix
+		plp
+		bpl intf
+		lda fwrkma
+		ora fwrkmb
+		ora fwrkmc
+		ora fwrkmd
+		beq intf
+		jsr fineg
+		jsr finc
+		jsr fineg
+intf		jsr ifix + 3
+		lda #$40
+intx		rts
+asc		jsr factor
+		bne facte
+		lda clen
+		beq true
+		lda stracc
+sinstj		jmp sinstk
+inkey		jsr inkea
+		tya
+		bne true
+		txa
+		jmp ayacc
+facte		jmp letm
+eof		jsr chann
+		tax
+		lda #$7f
+		jsr osbyte
+		txa
+		beq trutwo
+true		ldx #$ff
+trutwo		stx iaccl
+		stx iaccm
+		stx iaccn
+		stx iacch
+sgnint		lda #$40
+		rts
+false		ldx #0
+		bra trutwo
+sgnflt		jsr ftst
+		beq false
+		bpl sgnpos
+		bra true
+sgn		jsr factor
+		beq facte
+		bmi sgnflt
+		lda iacch
+		ora iaccn
+		ora iaccm
+		ora iaccl
+		beq sgnint
+		lda iacch
+		bmi true
+sgnpos		lda #1
+sgnsin		bra sinstj
+point		jsr inexpr
+		jsr phacc
+		jsr comeat
+		jsr intbra
+		lda iaccl
+		pha
+		ldx iaccm
+		jsr popacc
+		stx iacch
+		pla
+		sta iaccn
+		ldy #0
+		ldx #iaccl
+		lda #$09
+		jsr osword
+		lda iaccl + 4
+		bmi true
+		bra sgnsin
+instr		jsr expr
+		bne facte
+		cpx #","
+		bne instre
+		inc aecur
+		jsr phstr
+		jsr expr
+		bne facte
+		lda #1
+		sta iaccl
+		inc aecur
+		cpx #")"
+		beq instrg
+		cpx #","
+		beq instrh
+instre		jmp comerr
+instrh		jsr stinbr
+		jsr popstr
+instrg		ldx iaccl
+		bne instrf
+		ldx #1
+instrf		stx iaccl
+		txa
+		dex
+		stx iacch
+		clc
+		adc aestkp
+		sta work
+		lda #0
+		adc aestkp + 1
+		sta work + 1
+		lda (aestkp)
+		sec
+		sbc iacch
+		bcc instry
+		sbc clen
+		bcc instry
+		adc #0
+		sta iaccm
+		jsr popstx
+instrl		ldy #0
+		ldx clen
+		beq instro
+instrm		lda (work), y
+		cmp stracc, y
+		bne instrn
+		iny
+		dex
+		bne instrm
+instro		lda iaccl
+instrp		jmp sinstk
+instry		jsr popstx
+instrz		lda #0
+		bra instrp
+instrn		inc iaccl
+		dec iaccm
+		beq instrz
+		inc work
+		bne instrl
+		inc work + 1
+		bra instrl
+abse		jmp letm
+abs		jsr factor
+		beq abse
+		bmi fabs
+abscom		bit iacch
+		bmi compno
+		bra compdn
+fabs		stz faccs
+		rts;status flags unchanged!
+fsub		jsr fxsub
+fneg		lda faccma
+		beq fnegx
+		lda faccs
+		eor #$80
+		sta faccs
+fnegx		lda #$ff
+		rts
+unmins		jsr unplus
+valcmp		beq abse
+		bmi fneg
+compno		sec
+		lda #0
+		tay
+		sbc iaccl
+		sta iaccl
+		tya
+		sbc iaccm
+		sta iaccm
+		tya
+		sbc iaccn
+		sta iaccn
+		tya
+		sbc iacch
+		sta iacch
+compdn		lda #$40
+		rts
+datast		jsr aespac
+		cmp #'"'
+		beq qstr
+		ldx #0
+datasl		lda (aeline), y
+		sta stracc, x
+		iny
+		inx
+		cmp #$0d
+		beq qstrf
+		cmp #","
+		bne datasl
+qstrf		dey
+qstre		dex
+		stx clen
+		sty aecur
+		lda #0
+		rts
+qstr		ldx #0
+qstrp		iny
+qstrl		lda (aeline), y
+		cmp #$0d
+		beq qstreg
+		sta stracc, x
+		iny
+		inx
+		cmp #'"'
+		bne qstrl
+		lda (aeline), y
+		cmp #'"'
+		beq qstrp
+		bne qstre
+qstreg		jmp nstng
+factor		ldy aecur
+		inc aecur
+		lda (aeline), y
+		cmp #" "
+		beq factor
+		cmp #"-"
+		beq unmins
+		cmp #'"'
+		beq qstr
+		cmp #"+"
+		bne doplus
+unplus		jsr aespac
+doplus		cmp #topenu
+		bcc tstvar
+		cmp #teof + 1
+		bcs facerr
+		jmp dispatch
+tstvar		cmp #"?"
+		bcs tstvb
+		cmp #"."
+		bcs tstn
+		cmp #"&"
+		beq hexin
+		cmp #"("
+		beq bra_
+tstvb		dec aecur
+		jsr lvcont
+		beq errfac
+		jmp varind
+tstn		jsr frdd
+		bcc facerr
+		rts
+errfac		lda bytesm
+		and #2
+		bne facerr
+		bcs facerr
+		stx aecur
+getpc		lda pc
+		ldy pc + 1
+		bra ayaccb
+facerr		brk
+	!tx $1a
+	!tx "No such variable"
+bkterr		brk
+	!tx $1b
+	!tx $8d , ")"
+hexded		brk
+	!tx $1c
+	!tx "Bad Hex"
+		brk
+bra_		jsr expr
+		inc aecur
+		cpx #")"
+		bne bkterr
+		tay
+		rts
+hexin		jsr false
+		iny
+hexip		lda (aeline), y
+		cmp #$30
+		bcc hexend
+		cmp #$3a
+		bcc okhex
+		sbc #$37
+		cmp #$0a
+		bcc hexend
+		cmp #$10
+		bcs hexend
+okhex		asl
+		asl
+		asl
+		asl
+		ldx #3
+inloop		asl
+		rol iaccl
+		rol iaccm
+		rol iaccn
+		rol iacch
+		dex
+		bpl inloop
+		iny
+		bne hexip
+hexend		txa
+		bpl hexded
+		sty aecur
+		lda #$40
+		rts
+adc_		jsr intfac
+		ldx iaccl
+		lda #$80
+		jsr osbyte
+		txa
+ayaccb		bra ayacc
+to		iny
+		lda (aeline), y
+		cmp #"P"
+		bne facerr
+		inc aecur
+		lda top
+		ldy top + 1
+		bra ayacc
+rpage		ldy txtp
+		lda #0
+		bra ayacc
+lenb		jmp letm
+len		jsr factor
+		bne lenb
+		lda clen
+sinstk		ldy #0
+ayacc		sta iaccl
+		sty iaccm
+		stz iaccn
+		stz iacch
+		lda #$40
+		rts
+count		lda tally
+		bra sinstk
+rlomem		lda lomem
+		ldy lomem + 1
+		bra ayacc
+rhimem		lda himem
+		ldy himem + 1
+		bra ayacc
+erl		ldy lolino + 1
+		lda lolino
+		bra ayacc
+err		lda (repptr)
+		bra sinstk
+get		jsr osrdch
+		bra sinstk
+rtime		iny
+		lda (aeline), y
+		cmp #"$"
+		beq rtimed
+		ldx #iaccl
+		ldy #0
+		lda #1
+		jsr osword
+		lda #$40
+		rts
+rtimed		inc aecur
+		lda #14; read time$
+		ldx #<stracc
+		ldy #> stracc
+		stz stracc;ask for long time
+		jsr osword
+		lda #24;answer has fixed length
+		bra lefts
+getd		jsr osrdch
+sinstr		sta stracc
+		lda #1
+		bra lefts
+leftd		clc;LEFT$ and RIGHT$ share initial code
+rightd		php;carry SET on entry implies RIGHT$
+		jsr expr
+		bne lefte
+		cpx #","
+		bne midc
+		inc aecur
+		jsr stinbr
+		jsr popstr
+		plp
+		bcs rightt
+		lda iaccl
+		cmp clen
+		bcs leftx
+lefts		sta clen
+leftx		lda #0
+		rts
+rightt		lda clen;carry set
+		sbc iaccl
+		bcc leftx
+		beq leftx + 2
+		tax
+		lda iaccl
+		sta clen
+		beq leftx + 2
+		ldy #0
+rghlop		lda stracc, x
+		sta stracc, y
+		inx
+		iny
+		dec iaccl
+		bne rghlop
+		bra leftx
+inked		jsr inkea
+		txa
+		cpy #0
+		beq sinstr
+rnul		lda #0
+		bra lefts
+lefte		jmp letm
+midc		jmp comerr
+midd		jsr expr
+		bne lefte
+		cpx #","
+		bne midc
+		jsr phstr
+		inc aecur
+		jsr inexpr
+		lda iaccl
+		pha
+		lda #$ff
+		sta iaccl
+		inc aecur
+		cpx #")"
+		beq midtwo
+		cpx #","
+		bne midc
+		jsr intbra
+midtwo		jsr popstr
+		pla
+		tay
+		clc
+		beq midlb
+		sbc clen
+		bcs rnul
+		dey
+		tya
+midlb		sta iaccn
+		tax
+		ldy #0
+		lda clen
+		sec
+		sbc iaccn
+		cmp iaccl
+		bcs midla
+		sta iaccl
+midla		lda iaccl
+		beq rnul
+midlp		lda stracc, x
+		sta stracc, y
+		iny
+		inx
+		cpy iaccl
+		bne midlp
+		sty clen
+		bra strnx
+strd		jsr aespac
+		ldy #$ff
+		cmp #"~"
+		beq strdt
+		ldy #0
+		dec aecur
+strdt		phy
+		jsr factor
+		beq stre
+		tay
+		pla
+		sta printf
+		lda varl + 3
+		bne strdm
+		sta work
+		jsr fcona
+		bra strnx
+strdm		jsr fcon
+		bra strnx
+stre		jmp letm
+strnd		jsr inexpr
+		jsr phacc
+		jsr comeat
+		jsr bra_
+		bne stre
+		jsr popacc
+		ldy clen
+		beq strnx
+		lda iaccl
+		beq strny
+		dec iaccl
+		beq strnx
+strnl		ldx #0
+strnlp		lda stracc, x
+		sta stracc, y
+		inx
+		iny
+		beq strnov
+		cpx clen
+		bcc strnlp
+		dec iaccl
+		bne strnl
+		sty clen
+strnx		lda #0
+		rts
+strny		sta clen
+		rts
+strnov		jmp strovr
+	;!source cbas0a

@@ -1,0 +1,848 @@
+;ACME 0.97
+
+;                              FILE 5 print dim misc > CBAS04
+printh		jsr daechan
+prinhl		phy
+		jsr comchk
+		bne prinhx
+		jsr expr
+		jsr starga
+		ply
+		lda type
+		jsr osbput
+		tax
+		beq prinhs
+		bmi prinhf
+		ldx #3
+prinhq		lda iaccl, x
+		jsr osbput
+		dex
+		bpl prinhq
+		bra prinhl
+prinhf		ldx #4
+prinhp		lda fwsa, x
+		jsr osbput
+		dex
+		bpl prinhp
+		bra prinhl
+prinhs		lda clen
+		jsr osbput
+		tax
+		beq prinhl
+prinho		lda stracc - 1, x
+		jsr osbput
+		dex
+		bne prinho
+		bra prinhl
+prinhx		pla
+		sty cursor
+		jmp donext
+print		jsr chkhsh
+		beq printh
+		dec cursor
+		bra strtpr
+prcomm		lda varl
+		beq strtpr
+		lda tally
+prcoml		beq strtpr
+		sbc varl
+		bcs prcoml
+		tay
+prcomo		jsr listpt
+		iny
+		bne prcomo
+strtpr		clc
+		lda varl
+		sta prints
+amper		ror printf
+endpri		jsr spaces
+		cmp #":"
+		beq dedprc
+		cmp #$0d
+		beq dedprc
+		cmp #telse
+		bne contpr
+dedprc		jsr nline
+dedpr		jmp sunk
+prfuny		stz prints
+		stz printf
+		jsr spaces
+		cmp #":"
+		beq dedpr
+		cmp #$0d
+		beq dedpr
+		cmp #telse
+		beq dedpr
+contpr		cmp #"~"
+		beq amper
+		cmp #","
+		beq prcomm
+		cmp #";"
+		beq prfuny
+		jsr prspec
+		bcc endpri
+		lda prints
+		pha
+		lda printf
+		pha
+		dec aecur
+		jsr expr
+		pla
+		sta printf
+		pla
+		sta prints
+		lda aecur
+		sta cursor
+		tya
+		beq pstr
+		jsr fcon;print a number
+		lda prints
+		sec
+		sbc clen
+		bcc pstr
+		beq pstr
+		tay
+fprnl		jsr listpt
+		dey
+		bne fprnl
+pstr		lda clen
+		beq endpri
+		ldy #0
+loop		lda stracc, y
+		jsr chout + 4
+		iny
+		cpy clen
+		bne loop
+		bra endpri
+tabcom		jmp comerr
+tab2		lda iaccl
+		pha
+		jsr intbra
+		lda #$1f
+		jsr oswrch
+		pla
+		jsr oswrch
+		jsr wriacc
+		bra prtstm
+tab		jsr inexpr
+		jsr comchk
+		beq tab2
+		cmp #")"
+		bne tabcom
+		lda iaccl
+		sbc tally;carry set by cmp
+		beq prtstm
+		tax
+		bcs spclop
+		jsr nline
+		bra spct
+spc		jsr intfac
+spct		ldx iaccl
+		beq prtstm
+spclop		jsr listpl
+		bra prtstm
+prcr		jsr nline
+prtstm		clc
+		bra ascur
+adexpr		dec cursor
+asexpr		jsr aeexpr
+		jsr integb
+ascur		ldy aecur
+		sty cursor
+		rts
+prspec		ldx line
+		stx aeline
+		ldx line + 1
+		stx aeline + 1
+		ldx cursor
+		stx aecur
+		cmp #"'"
+		beq prcr
+		cmp #ttab
+		beq tab
+		cmp #tspc
+		beq spc
+		sec
+prtsto		rts
+nstng		brk
+	!tx $09
+	!tx $8d , '"'
+		brk
+prtstn		jsr spaces
+		jsr prspec
+		bcc prtsto
+		cmp #'"'
+		bne prtsto - 1
+prstrn		iny
+		lda (aeline), y
+		cmp #$0d
+		beq nstng
+		cmp #'"'
+		bne pch
+		iny
+		sty aecur
+		lda (aeline), y
+		cmp #'"'
+		bne prtstm
+pch		jsr chout + 4
+		bra prstrn
+call		jsr aeexpr
+		jsr integ
+		jsr phacc
+		stz stracc
+		ldy #0
+calllp		phy
+		jsr comchk
+		bne calldn
+		ldy aecur
+		jsr lvblnk + 1
+		beq callfl
+		ply
+		iny
+		lda iaccl
+		sta stracc, y
+		iny
+		lda iaccm
+		sta stracc, y
+		iny
+		lda iaccn
+		sta stracc, y
+		inc stracc
+		bra calllp
+calldn		ply
+		dec aecur
+		jsr aedone
+		jsr popacc
+		jsr user
+		cld
+		jmp nxt
+callfl		jmp facerr
+user		lda varl + 12
+		lsr
+		lda varl + 4
+		ldx varl + $60
+		ldy varl + $64
+		jmp (iaccl)
+delded		jmp stded
+delete		jsr sptstn
+		bcc delded
+		jsr phacc
+		jsr chkcom
+		bne delded
+		jsr sptstn
+		bcc delded
+		jsr done
+		lda iaccl
+		sta work + 2
+		lda iaccm
+		sta work + 3
+		jsr popacc
+dodels		jsr remove
+		jsr tstbrk
+		jsr incacc
+		lda work + 2
+		cmp iaccl
+		lda work + 3
+		sbc iaccm
+		bcs dodels
+		jmp fsaset
+gettwo		lda #10
+		jsr sinstk
+		jsr sptstn
+		jsr phacc
+		lda #10
+		jsr sinstk
+		jsr chkcom
+		bne no
+		jsr sptstn
+		lda iaccm
+		bne getyuk
+		lda iaccl
+		beq getyuk
+		jmp done
+no		jmp donet
+renset		lda top
+		sta work + 4
+		lda top + 1
+		sta work + 5
+renstr		lda txtp
+		sta work + 1
+		ldy #1
+		sty work
+		rts
+renum		jsr gettwo
+		ldx #work + 2
+		jsr popx
+		jsr ender
+		jsr renset
+numba		lda (work)
+		bmi numbb
+		sta (work + 4)
+		lda (work), y;Y=1
+		sta (work + 4), y
+		sec
+		tya
+		adc work + 4
+		sta work + 4
+		bcc * + 4
+		inc work + 5
+		cmp himem
+		lda work + 5
+		sbc himem + 1
+		bcs numbfl
+		jsr stepon;Y=1
+		bra numba
+numbfl		brk
+		brk
+	!tx trenum , " space"
+getyuk		brk
+		brk
+	!tx "Silly"
+		brk
+numbb		jsr renstr
+numbc		lda (work)
+		bmi numbd
+		lda work + 3
+		sta (work)
+		lda work + 2
+		sta (work), y;Y=1
+		clc
+		lda work + 2
+		adc iaccl
+		sta work + 2
+		lda #0
+		adc work + 3
+		and #$7f
+		sta work + 3
+		jsr stepon;Y=1
+		bra numbc
+numbd		lda txtp
+		sta line + 1
+		stz line
+numbe		ldy #1
+		lda (line), y
+		bmi numbx
+		ldy #4
+		stz iaccn
+numbf		lda (line), y
+		ldx iaccn
+		bne numbfs
+		cmp #tconst
+		beq numbg
+		cmp #trem
+		beq numbfx
+numbfs		iny
+		cmp #'"'
+		bne numbft
+		eor iaccn
+		sta iaccn
+numbft		cmp #$0d
+		bne numbf
+numbfx		ldy #3
+		lda (line), y
+		jsr addlin
+		bra numbe
+numbg		jsr spgetn
+		jsr renset;Y=1
+numbh		lda (work)
+		bmi numbj
+		lda (work + 4)
+		cmp iaccm
+		bne numbi
+		lda (work + 4), y;Y=1
+		cmp iaccl
+		bne numbi
+		lda (work), y;Y=1
+		sta work + 6
+		lda (work)
+		tax
+		ldy cursor
+		dey
+		lda line
+		sta work + 2
+		lda line + 1
+		sta work + 3
+		jsr consti
+numbfa		ldy cursor
+		bra numbf
+numbi		clc
+		jsr stepon
+		lda work + 4
+		adc #2;carry clear from stepon
+		sta work + 4
+		bcc numbh
+		inc work + 5
+		bra numbh
+numbx		bra endaut
+numbj		jsr vstrng
+	!tx "Failed at "
+		lda (line), y;Y=1
+		sta iaccm
+		iny
+		lda (line), y
+		sta iaccl
+		jsr posite
+		jsr nline
+		bra numbfa
+stepon		iny
+		lda (work), y
+		ldy #1
+		adc work
+		sta work
+		bcc stepx
+		inc work + 1
+		clc
+stepx		rts
+auto		jsr gettwo
+		lda iaccl
+		pha
+		jsr popacc
+autolp		jsr phacc
+		jsr nprn
+		jsr buff
+		jsr popacc
+		jsr match
+		ldy #0
+		jsr insrt
+		jsr setfsa
+		pla
+		pha
+		clc
+		adc iaccl
+		sta iaccl
+		bcc autolp
+		inc iaccm
+		bpl autolp
+endaut		jmp fsaset
+dimspr		jmp dimram
+dimsp		dec cursor
+		jsr craelv
+		beq notgo
+		bcs notgo
+		jsr phaddr
+		jsr inexpr
+		jsr incacc
+		lda iacch
+		ora iaccn
+		bne notgo
+		clc
+		lda iaccl
+		adc fsa
+		tay
+		lda iaccm
+		adc fsa + 1
+		tax
+		cpy aestkp
+		sbc aestkp + 1
+		bcs dimspr
+		lda fsa
+		sta iaccl
+		lda fsa + 1
+		sta iaccm
+		sty fsa
+		stx fsa + 1
+;CLR IACCN
+;CLR IACCH N and H already zero
+		lda #$40
+		sta type
+		jsr store
+		jsr ascur
+dimnxt		jsr chkcom
+		beq dim
+		jmp sunk
+smul		ldx #work + 8
+		jsr popx
+wmul		ldx #0
+		ldy #0
+smula		lsr work + 9
+		ror work + 8
+		bcc smulb
+		clc
+		tya
+		adc iaccl
+		tay
+		txa
+		adc iaccm
+		tax
+		bcs notgo
+smulb		asl iaccl
+		rol iaccm
+		bcs notgo
+		lda work + 8
+		ora work + 9
+		bne smula
+	+assert > smula = > *
+		sty iaccl
+		stx iaccm
+		rts
+notgo		brk
+	!tx $0a
+	!tx "Bad " , tdim
+		brk
+dim		jsr spaces
+		tya
+		clc
+		adc line
+		ldx line + 1
+		bcc dimnno
+		inx
+		clc
+dimnno		sbc #0
+		sta work
+		txa
+		sbc #0
+		sta work + 1
+		ldx #5
+		stx work + 8
+		ldx cursor
+		jsr word
+		cpy #1
+		beq notgo
+		cmp #"("
+		beq dimvar
+		cmp #"$"
+		beq dimint
+		cmp #"%"
+		bne dimspa
+dimint		dec work + 8
+		iny
+		inx
+		lda (work), y
+		cmp #"("
+		beq dimvar
+dimspa		jmp dimsp
+dimvar		iny
+		stx cursor
+		jsr lookup
+dimgon		bne notgo;NE chain branch to NOTGO
+		jsr create
+		ldx #1
+		jsr creax
+		lda work + 8
+		pha
+		lda #1
+		pha
+		jsr sinstk
+rdloop		jsr phacc
+		jsr asexpr
+		lda iaccm
+		and #$c0
+		ora iaccn
+		ora iacch
+		bne notgo
+		jsr incacc
+		ply
+		lda iaccl
+		sta (fsa), y
+		iny
+		lda iaccm
+		sta (fsa), y
+		iny
+		phy
+		jsr smul
+		jsr chkcom
+		beq rdloop
+		cmp #")"
+		bne dimgon;warning NE status used again
+		plx
+		pla
+		phx
+		sta work + 8
+		stz work + 9
+		jsr wmul
+		pla
+		pha
+		adc iaccl
+		sta iaccl
+		bcc nohinc
+		inc iaccm
+nohinc		lda fsa + 1
+		sta work + 1
+		lda fsa
+		sta work
+		clc
+		adc iaccl
+		tay
+		lda iaccm
+		adc fsa + 1
+		bcs dimram
+		tax
+		cpy aestkp
+		sbc aestkp + 1
+		bcs dimram
+		sty fsa
+		stx fsa + 1
+		pla
+		sta (work)
+		adc work
+		tay
+		lda #0
+		stz work
+		bcc zeloop
+		inc work + 1
+zeloop		sta (work), y
+		iny
+		bne zelpa
+		inc work + 1
+zelpa		cpy fsa
+		bne zeloop
+		cpx work + 1
+		bne zeloop
+		jmp dimnxt
+dimram		brk
+	!tx $0b
+	!tx tdim , " space"
+		brk
+lhimm		jsr ineqex
+		lda iaccl
+		sta himem
+		sta aestkp
+		lda iaccm
+		sta himem + 1
+		sta aestkp + 1
+		bra lpagex
+llomm		jsr ineqex
+		lda iaccl
+		sta lomem
+		sta fsa
+		lda iaccm
+		sta lomem + 1
+		sta fsa + 1
+		jsr setval
+		bra lpagex
+lpage		jsr ineqex
+		lda iaccm
+		sta txtp
+lpagex		jmp nxt
+clear		jsr done
+		jsr setfsa
+		bra lpagex
+trace		jsr sptstn
+		bcs tracnm
+		cmp #ton
+		beq tracon
+		cmp #toff
+		beq tracof
+		jsr asexpr
+tracnm		jsr done
+		lda iaccl
+		sta trnum
+		lda iaccm
+tracno		sta trnum + 1
+		lda #$ff
+tracnn		sta trflag
+		bra lpagex
+tracon		inc cursor
+		jsr done
+		lda #$ff
+		bne tracno
+tracof		inc cursor
+		jsr done
+		lda #0
+		bra tracnn
+ltime		iny
+		lda (line), y
+		cmp #"$"
+		beq ltimed
+		jsr ineqex
+		stz iaccl + 4
+		ldx #iaccl
+		ldy #0
+		lda #2
+ltimex		jmp oswnxt
+ltimed		inc cursor
+		jsr aeeqex
+		lda type
+		bne intege
+		lda #$f;set time$
+		ldy clen
+		sty stracc - 1
+		ldx #< (stracc - 1)
+		ldy #> (stracc - 1)
+		bra ltimex
+stinbr		jsr phstr
+intbra		jsr bra_
+		bra integb
+incmex		jsr comeat
+inexpr		jsr expr
+		bra integb
+intfac		jsr factor
+		bra integb
+ineqex		jsr aeeqex
+integ		lda type
+integy		tay
+integb		beq intege
+		bpl integx
+ifix		jsr sfix
+		lda faccma
+		sta iacch
+		lda faccmb
+		sta iaccn
+		lda faccmc
+		sta iaccm
+		lda faccmd
+		sta iaccl
+integx		rts
+intege		jmp letm
+fltfac		jsr factor
+floati		beq intege
+		bmi integx
+		jmp iflt
+proc		lda line
+		sta aeline
+		lda line + 1
+		sta aeline + 1
+		lda cursor
+		sta aecur
+		lda #tproc
+		jsr fnbody
+		jsr aedone
+		jmp nxt
+locstr		ldy #3
+		lda #0
+		sta (iaccl), y
+		beq locvar
+local		tsx
+		cpx #$fc
+		bcs nlocal
+		jsr craelv
+		beq locend
+		jsr retinf
+		ldy iaccn
+		bmi locstr
+		jsr phaddr
+		jsr false
+		sta type
+		jsr store
+locvar		tsx
+		inc $0106, x
+		ldy aecur
+		sty cursor
+		jsr chkcom
+		beq local
+		jmp sunk
+locend		jmp donext
+nlocal		brk
+	!tx $0c
+	!tx "Not " , tlocal
+modesx		brk
+	!tx $19
+	!tx "Bad " , tmode
+		brk
+graph		jsr asexpr
+		lda iaccl
+		pha
+		jsr incmex
+		jsr aedone
+		lda #$12
+		jsr oswrch
+		pla
+		bra sentwo
+texts		jsr asexpr
+		jsr done
+		lda #$11
+		bra sentwo
+modes		jsr asexpr
+		jsr done
+		jsr getmac
+		inx
+		bne modego
+		iny
+		bne modego
+		lda aestkp
+		cmp himem
+		bne modesx
+		lda aestkp + 1
+		cmp himem + 1
+		bne modesx
+		ldx iaccl
+		lda #$85
+		jsr osbyte
+		cpx fsa
+		tya
+		sbc fsa + 1
+		bcc modesx
+		cpx top
+		tya
+		sbc top + 1
+		bcc modesx
+		stx himem
+		stx aestkp
+		sty himem + 1
+		sty aestkp + 1
+modego		stz tally
+		lda #$16
+sentwo		jsr oswrch
+		lda iaccl
+		bra docl
+move		lda #4
+		bra drawer
+draw		lda #5
+drawer		pha
+		jsr aeexpr
+		jsr integ
+		bra ploter
+plot		jsr asexpr
+		lda iaccl
+		pha
+		jsr incmex
+ploter		jsr phacc
+		jsr incmex
+		jsr aedone
+		lda #$19
+		jsr oswrch
+		pla
+		jsr oswrch
+		jsr popwrk
+		lda work
+		jsr oswrch
+		lda work + 1
+		jsr oswrch
+		jsr wriacc
+		lda iaccm
+		bra docl
+clg		jsr done
+		lda #$10
+		bra docl
+cls		jsr done
+		stz tally
+		lda #$0c
+docl		jsr oswrch
+clsext		jmp nxt
+report		jsr done
+		jsr nline
+		ldy #1
+replop		lda (repptr), y
+		beq clsext
+		jsr tokout
+		iny
+		bne replop
+		bra clsext
+vdup		lda iaccm
+		jsr oswrch
+vdu		jsr spaces
+vdul		cmp #":"
+		beq vdux
+		cmp #$0d
+		beq vdux
+		cmp #telse
+		beq vdux
+		dec cursor
+		jsr asexpr
+		jsr wriacc
+		jsr chkcom
+		beq vdu
+		cmp #";"
+		beq vdup
+		cmp #"|"
+		bne vdul
+		lda #0
+		ldy #9
+vdufll		jsr oswrch
+		dey
+		bne vdufll
+		bra vdu
+vdux		jmp sunk
+wriacc		lda iaccl
+		jmp ($20e)
+	;!source cbas05

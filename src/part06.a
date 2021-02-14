@@ -1,0 +1,551 @@
+;ACME 0.97
+
+;                                   FILE 7 prn and expression analyser > CBAS06
+
+fcomps		pla
+		sta iaccl
+		pla
+		sta iaccm
+		pla
+		sta iaccn
+		pla
+		sta iacch
+		jsr phfacc
+		jsr iflt
+		jsr ftow
+		jsr popset
+		jsr flda
+		bra fcmpa;X preserved from ADDER to here
+fcompr		jsr phfacc
+		jsr adder
+		tay
+		jsr floati
+		jsr popset
+fcmp		jsr fldw
+fcmpa		ldy #0;X preserved from ADDER to here
+		lda #$7f
+		trb fwrks
+		lda faccs
+		and #$80
+		cmp fwrks
+		bne fcmpz
+		lda fwrkx
+		cmp faccx
+		bne fcmpzz
+		lda fwrkma
+		cmp faccma
+		bne fcmpzz
+		lda fwrkmb
+		cmp faccmb
+		bne fcmpzz
+		lda fwrkmc
+		cmp faccmc
+		bne fcmpzz
+		lda fwrkmd
+		cmp faccmd
+		bne fcmpzz
+fcmpz		rts
+fcmpzz		ror
+		eor fwrks
+		rol
+		lda #1
+		rts
+compre		jmp letm
+compr		txa;string or numeric compare
+		beq stncmp
+		bmi fcompr
+		lda iacch
+		pha
+		lda iaccn
+		pha
+		lda iaccm
+		pha
+		lda iaccl
+		pha
+		jsr adder
+		tay
+		beq compre
+		bmi fcomps
+		lda iacch
+		eor #$80
+		sta iacch
+		sec
+		pla
+		sbc iaccl
+		sta iaccl
+		pla
+		sbc iaccm
+		tsb iaccl;iaccl=iaccl OR a
+		pla
+		sbc iaccn
+		tsb iaccl;iaccl=iaccl OR a
+		pla
+		ldy #0
+		eor #$80
+		sbc iacch
+		ora iaccl
+		rts
+stncmp		jsr phstr
+		jsr adder
+		tay
+		bne compre
+		lda (aestkp);other clen
+		cmp clen
+		bcc comprf
+		lda clen
+comprf		sta work
+comprg		cpy work;Y was zero
+		beq comprh
+		iny
+		lda (aestkp), y
+		cmp stracc - 1, y
+		beq comprg
+		bra compri
+comprh		lda (aestkp)
+		cmp clen
+compri		php
+		jsr popstx;doesn't use X
+		ldy #0
+		plp
+		rts;has preserved X throughout
+aeexpr		lda line
+		sta aeline
+		lda line + 1
+		sta aeline + 1
+		lda cursor
+		sta aecur
+;  EXPR reads a rhs. If status is eq then it returned a string.
+;  If status is neq and plus then it returned a word.
+;  If status is neq and minus then it returned an fp.
+expr		jsr ander
+exprq		cpx #tor
+		beq or
+		cpx #teor
+		beq eor_
+		dec aecur
+		tay
+		sta type
+		rts
+or		jsr phandr
+		jsr integy
+		ldy #3
+orlp		lda (aestkp), y
+		ora iaccl, y
+		sta iaccl, y
+		dey
+		bpl orlp
+exprp		jsr popinc
+		lda #$40
+		bra exprq
+eor_		jsr phandr
+		jsr integy
+		ldy #3
+eorlp		lda (aestkp), y
+		eor iaccl, y
+		sta iaccl, y
+		dey
+		bpl eorlp
+		bra exprp
+phandr		jsr integy
+		jsr phacc
+ander		jsr relate
+anderq		cpx #tand
+		beq and_
+		rts
+and_		jsr integy
+		jsr phacc
+		jsr relate
+		jsr integy
+		ldy #3
+andlp		lda (aestkp), y
+		and iaccl, y
+		sta iaccl, y
+		dey
+		bpl andlp
+		jsr popinc
+		lda #$40
+		bra anderq
+relate		jsr adder
+		cpx #"?"
+		bcs relatx
+		cpx #"<"
+		bcs relts
+relatx		rts
+relts		beq reltlt
+		cpx #">"
+		beq reltgt
+		tax;test equal
+		jsr compr + 1
+		bne fail
+pass		dey
+fail		sty iaccl
+		sty iaccm
+		sty iaccn
+		sty iacch
+		lda #$40;type integer
+		rts
+reltlt		tax
+		ldy aecur
+		lda (aeline), y
+		cmp #"="
+		beq ltoreq
+		cmp #">"
+		beq nequal
+		jsr compr;test less than
+		bcc pass
+		bra fail
+ltoreq		inc aecur
+		jsr compr
+		beq pass
+		bcc pass
+		bra fail
+nequal		inc aecur
+		jsr compr
+		bne pass
+		bra fail
+reltgt		tax
+		ldy aecur
+		lda (aeline), y
+		cmp #"="
+		beq gtoreq
+		jsr compr;test greater than
+		beq fail
+		bcs pass
+		bra fail
+gtoreq		inc aecur
+		jsr compr
+		bcs pass
+		bra fail
+strovr		brk
+	!tx $13
+	!tx "String too long"
+		brk
+stncon		jsr phstr
+		jsr power
+		tay
+		bne addere
+		clc
+		phx
+		lda (aestkp)
+		adc clen
+		bcs strovr
+		tax
+		pha
+		ldy clen
+conlop		lda stracc - 1, y
+		sta stracc - 1, x
+		dex
+		dey
+		bne conlop
+		jsr popstr
+		pla
+		sta clen
+		plx
+		lda #0
+		bra adderq
+adder		jsr term
+adderq		cpx #"+"
+		beq plus
+		cpx #"-"
+		beq minus
+		rts
+plus		tay
+		beq stncon
+		bmi fplus
+		jsr phterm
+		tay
+		beq addere
+		bmi fplust
+		clc
+		lda (aestkp)
+		adc iaccl
+		sta iaccl
+		ldy #1
+		lda (aestkp), y
+		adc iaccm
+		sta iaccm
+		iny
+		lda (aestkp), y
+		adc iaccn
+		sta iaccn
+		iny
+		lda (aestkp), y
+		adc iacch
+adderp		sta iacch
+		clc
+		lda aestkp
+		adc #4
+		sta aestkp
+		lda #$40;reset type
+		bcc adderq
+		inc aestkp + 1
+		bra adderq
+addere		jmp letm
+fplus		jsr phfacc
+		jsr term
+		tay
+		beq addere
+		stx type
+		bmi fpluss
+		jsr iflt
+fpluss		jsr popset
+		jsr fadd
+ffffa		ldx type
+		lda #$ff
+		bra adderq
+fplust		stx type
+		jsr popacc
+		jsr phfacc
+		jsr iflt
+		bra fpluss
+minus		tay
+		beq addere
+		bmi fminus
+		jsr phterm
+		tay
+		beq addere
+		bmi fminut
+		sec
+		lda (aestkp)
+		sbc iaccl
+		sta iaccl
+		ldy #1
+		lda (aestkp), y
+		sbc iaccm
+		sta iaccm
+		iny
+		lda (aestkp), y
+		sbc iaccn
+		sta iaccn
+		iny
+		lda (aestkp), y
+		sbc iacch
+		bra adderp
+fminus		jsr phfacc
+		jsr term
+		tay
+		beq addere
+		stx type
+		bmi fminur
+		jsr iflt
+fminur		jsr popset
+		jsr fxsub
+		bra ffffa
+fminut		stx type
+		jsr popacc
+		jsr phfacc
+		jsr iflt
+		jsr popset
+		jsr fsub
+		bra ffffa
+ftimlf		jsr iflt
+ftiml		jsr popacc
+		jsr phfacc
+		jsr iflt
+		bra ftimr
+ftimfl		jsr iflt
+ftim		jsr phfacc
+		jsr power
+		tay
+		jsr floati
+ftimr		jsr popset
+		jsr fmul
+		lda #$ff
+		jmp termq;X has been preserved to here
+ftime		jmp letm
+times		tay
+		beq ftime
+		bmi ftim
+		ldy iacch
+		cpy iaccn
+		bne ftimfl
+		lda iaccm
+		asl
+		tya
+		adc #0
+		bne ftimfl
+		jsr phpow
+		tay
+		beq ftime
+		bmi ftiml
+		ldy iacch
+		cpy iaccn
+		bne ftimlf
+		lda iaccm
+		asl
+		tya
+		adc #0
+		bne ftimlf
+		phy;Push IACCH
+		jsr abscom
+		stx type
+		ldx #work + 2
+		jsr acctom
+		jsr popacc
+		pla
+		eor iacch
+		sta work
+		jsr abscom
+		ldy #0
+		ldx #0
+		stz work + 8
+		stz work + 9
+nul		lsr work + 3
+		ror work + 2
+		bcc nad
+		clc
+		tya
+		adc iaccl
+		tay
+		txa
+		adc iaccm
+		tax
+		lda work + 8
+		adc iaccn
+		sta work + 8
+		lda work + 9
+		adc iacch
+		sta work + 9
+nad		asl iaccl
+		rol iaccm
+		rol iaccn
+		rol iacch
+		lda work + 2
+		ora work + 3
+		bne nul
+	+assert > nul = > *
+		sty work + 6
+		stx work + 7
+		lda work
+		php
+remin		ldx #work + 6
+divin		jsr mtoacc
+		plp
+		bpl terma
+		jsr compno
+terma		ldx type
+		bra termq
+timesj		jmp times
+phterm		jsr phacc
+term		jsr power
+termq		cpx #"*"
+		beq timesj
+		cpx #"/"
+		beq divide
+		cpx #tmod
+		beq remain
+		cpx #tdiv
+		beq intdiv
+		rts
+divide		tay
+		jsr floati
+		jsr phfacc
+		jsr power
+		stx type
+		tay
+		jsr floati
+		jsr popset
+		jsr fxdiv
+		lda #$ff
+		bra terma
+remain		jsr divop
+		lda work + 1
+		php
+		bra remin
+intdiv		jsr divop
+		rol work + 2
+		rol work + 3
+		rol work + 4
+		rol work + 5
+		bit work
+		php
+		ldx #work + 2
+		bra divin
+phpow		jsr phacc
+power		jsr factor
+powerb		pha
+powera		ldy aecur
+		inc aecur
+		lda (aeline), y
+		cmp #" "
+		beq powera
+		tax
+		pla
+		cpx #"^"
+		beq pow
+		rts
+pow		tay
+		jsr floati
+		jsr phfacc
+		jsr fltfac
+		lda faccx
+		cmp #$87
+		bcs fpowa;abs(n)>=64
+		jsr ffrac
+		bne fpowe
+		jsr popset
+		jsr flda
+		lda fquad
+		jsr fipow
+		bra fpowf
+fpowe		jsr stargc
+		lda aestkp
+		sta argp
+		lda aestkp + 1
+		sta argp + 1
+		jsr flda
+		lda fquad
+		jsr fipow
+fpowc		lda #<fwsb
+		jsr fstap
+		jsr popset
+		jsr flda
+		jsr flog
+		jsr acmul
+		jsr fexp
+		lda #<fwsb
+		jsr acmul + 2;*ARGB
+fpowf		lda #$ff
+		bra powerb
+fpowa		jsr stargc
+		jsr fone
+		bra fpowc
+posite		lda #0
+		bra nprn + 2
+nprn		lda #5;print number to chout 5 size in decimal
+		sta prints
+		ldx #4
+numlop		stz work + 8, x
+		sec
+numlp		lda iaccl
+		sbc vall, x
+		tay
+		lda iaccm
+		sbc valm, x
+		bcc outnum
+		sta iaccm
+		sty iaccl
+		inc work + 8, x
+		bra numlp
+outnum		dex
+		bpl numlop
+		ldx #5
+lzb		dex
+		beq lastz
+		lda work + 8, x
+		beq lzb
+lastz		stx work
+		lda prints
+		beq plume
+		sbc work;carry clear
+		beq plume
+		tax
+		jsr listpl
+		ldx work
+plume		lda work + 8, x
+		ora #$30
+		jsr chout
+		dex
+		bpl plume
+		rts
+	;!source cbas07

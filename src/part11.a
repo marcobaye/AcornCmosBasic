@@ -1,0 +1,703 @@
+;ACME 0.97
+;                                   FILE E errors next for goto on > CBAS0B
+
+fnlino		ldy cursor
+		beq fnlino + 5
+		dey
+		jsr clyadp
+		stz lolino
+		stz lolino + 1
+		ldx txtp
+		stx work + 1
+		stz work
+		ldy line + 1
+		cpy #> buffer
+		beq fnlinx
+		ldx line
+find		jsr getwrk
+		cmp #$0d
+		bne chka
+		cpx work
+		tya
+		sbc work + 1
+		bcc fnlinx
+		jsr getwrk
+		ora #0
+		bmi fnlinx
+		sta lolino + 1
+		jsr getwrk
+		sta lolino
+		jsr getwrk
+chka		cpx work
+		tya
+		sbc work + 1
+		bcs find
+fnlinx		rts
+brek		ldx #$ff
+		stx bytesm
+		txs
+		inx
+		ldy #0
+		lda #$da
+		jsr osbyte
+		lda #$7e
+		jsr osbyte
+		jsr fnlino
+		stz trflag
+		lda (repptr)
+		bne breka;not the fatal error
+		jsr orderr
+breka		lda errorh
+		sta line
+		lda errorh + 1
+		sta line + 1
+		stz cursor
+		jsr setvar
+		jmp stmt
+orderr		lda #< baserr
+		sta errorh
+		lda #> baserr
+		sta errorh + 1
+		rts
+baserr	!tx treport , ":" , tif , terl , tprint , "\" at line \";" , terl , ":" , tend
+	!tx telse , tprint , ":" , tend , 13
+beep		jsr asexpr
+		ldx #3
+beeplp		lda iaccl
+		pha
+		lda iaccm
+		pha
+		phx
+		jsr incmex
+		plx
+		dex
+		bne beeplp
+		jsr aedone
+		lda iaccl
+		sta work + 6
+		lda iaccm
+		sta work + 7
+		ldy #$07
+		ldx #$05
+		bra envell
+envel		jsr asexpr
+		ldx #$0d
+envelp		lda iaccl
+		pha
+		phx
+		jsr incmex
+		plx
+		dex
+		bne envelp
+		jsr aedone
+		lda iaccl
+		sta work + $0d
+		ldx #$0c
+		ldy #$08
+envell		pla
+		sta work, x
+		dex
+		bpl envell
+		tya
+		ldx #work
+		ldy #0
+oswnxt		jsr osword
+		bra widthx
+width		jsr asexpr
+		jsr aedone
+		ldy iaccl
+		dey
+		sty widthv
+widthx		jmp nxt
+storer		jmp letm
+stexpr		jsr expr
+store		ply
+		plx
+		pla
+		sta work + 2
+		pla
+		sta work + 1
+		pla
+		sta work
+		phx
+		phy
+storf		lda work + 2
+		cmp #$05
+		beq storfp
+		lda type
+		beq storer
+		bpl storin
+		jsr ifix
+storin		lda iaccl
+		sta (work)
+		lda work + 2
+		beq stordn
+		lda iaccm
+		ldy #1
+		sta (work), y
+		lda iaccn
+		iny
+		sta (work), y
+		lda iacch
+		iny
+		sta (work), y
+stordn		rts
+storfp		lda type
+		beq storer
+		bmi storpf
+		jsr iflt
+storpf		lda faccx
+		sta (work)
+		ldy #1
+		lda faccs
+		eor faccma
+		and #$80
+		eor faccma
+		sta (work), y
+		iny
+		lda faccmb
+		sta (work), y
+		iny
+		lda faccmc
+		sta (work), y
+		iny
+		lda faccmd
+		sta (work), y
+		rts
+goedit	!tx "EDIT 12,2" , 13
+	+assert top = $12
+	+assert fsa = $2
+edit		jsr setfsa;overkill! (initialise FSA to TOP)
+		lda #$80
+		sta listop
+listgo		stz work + 4;FOR count
+		stz work + 5;REPEAT count
+		jsr false
+		jsr sptstn
+		php
+		jsr phacc
+		jsr true
+		lsr iaccm
+		plp
+		bcc nonuml
+		jsr chkcom
+		beq gotcx
+		jsr popacc
+		jsr phacc
+		dec cursor
+		bra gotcff
+nonuml		jsr chkcom
+		beq gotcx
+		dec cursor
+gotcx		jsr sptstn
+gotcff		ldx #faccma
+		jsr acctom;MA,MB:=IL,IM
+		jsr spaces
+		cmp #tif
+		bne listef
+		jsr spaces
+		jsr clyadp
+		bra listeg
+list		iny
+		lda (line), y
+		cmp #"O";listo command ?
+		bne listgo
+		inc cursor
+		jsr asexpr
+		jsr done
+		lda iaccl
+		sta listop
+		jmp clrstk;LISTEF-3
+listef		jsr donet
+listeg		lda line
+		sta aeline;pointer to search string as offset from buffer
+		jsr ender
+		jsr popacc
+		jsr fndlno
+		lda work + 6
+		sta line
+		lda work + 7
+		sta line + 1
+		bcs limtst
+		dey
+		bra getnum
+endln		jsr chout
+		bit listop
+		bmi getnew
+		lda #10
+		jsr oswrch
+getnew		jsr clyadp
+getnum		lda (line), y
+		sta iaccm
+		iny
+		lda (line), y
+		sta iaccl
+limtst		lda iaccl
+		clc
+		sbc faccma
+		lda iaccm
+		sbc faccmb
+		bcc lttest
+		bit listop
+		bpl listef - 3;exit normally if list
+		ldx #<goedit
+		ldy #> goedit
+		jmp oscli
+lttest		stz coefp
+		stz coefp + 1;don't list line
+		ldy #4
+		sty cursor
+		sty aecur
+		bit work + 4
+		bpl * + 4
+		stz work + 4
+		bit work + 5
+		bpl ltloop
+		stz work + 5
+ltloop		lda (line), y
+		cmp #$0d
+		beq chklst
+		cmp #trem
+		beq ltlook
+		cmp #'"'
+		bne ltloom
+		eor coefp
+ltlook		sta coefp;flip the look at tokens for FOR,REPEAT status
+ltloom		ldx coefp
+		bne lpsimt;check if looking at tokens
+		cmp #tnext
+		bne lpsimr
+		dec work + 4
+lpsimr		cmp #tuntil
+		bne lpsimt
+		dec work + 5
+lpsimt		ldx aeline
+ltmatc		lda buffer, x
+		cmp #$0d
+		beq ltmatd
+		cmp (line), y
+		bne ltnotn
+		iny
+		inx
+		bra ltmatc
+endlnj		bra endln
+ltmatd		sta coefp + 1;say line can be listed (A=13)
+ltnotn		inc aecur
+		ldy aecur
+		bra ltloop
+chklst		lda coefp + 1
+		beq getnew
+		jsr nprn
+		lda #1
+		inx;X=0
+		sec;1/2
+		jsr listps
+		ldx work + 4
+		lda #2
+		jsr listps - 1
+		ldx work + 5
+		lda #4
+		jsr listps - 1
+		stz coefp
+lpx		ldy cursor
+lp		lda (line), y
+		cmp #$0d
+		beq endlnj
+		cmp #'"'
+		bne lptoks
+		eor coefp
+		sta coefp
+		lda #'"'
+lpquot		jsr chout
+		iny
+		bra lp
+lptoks		ldx coefp
+		bne lpquot
+		cmp #tconst
+		bne lpsimp
+		jsr spgetn
+		sty cursor
+		jsr posite
+		bra lpx
+lpsimp		cmp #tfor
+		bne lpsimq
+		inc work + 4
+lpsimq		cmp #trepeat
+		bne lpsims
+		inc work + 5
+lpsims		cmp #trem
+		bne lpsimz
+		sta coefp;make sure that no more tokens on line will be listed
+lpsimz		jsr tokout
+		iny
+		bra lp
+next		jsr aelv
+		bne stripa
+		ldx forstp
+		beq nexer
+		bcs nochk
+nexhow		jmp stded
+stripa		bcs nexhow
+		ldx forstp
+		beq nexer
+strip		lda iaccl
+		cmp forinl - $f, x
+		bne notit
+		lda iaccm
+		cmp forinh - $f, x
+		bne notit
+		lda iaccn
+		cmp forint - $f, x
+		beq nochk
+notit		txa
+		sec
+		sbc #$0f
+		tax
+		stx forstp
+		bne strip
+		brk
+	!tx $21
+	!tx "Can't match " , tfor
+nexer		brk
+	!tx $20
+	!tx "No " , tfor
+		brk
+nochk		lda forinl - $f, x
+		sta iaccl
+		lda forinh - $f, x
+		sta iaccm
+		ldy forint - $f, x
+		cpy #$05
+		beq fnext
+		lda (iaccl)
+		adc forspl - $f, x
+		sta (iaccl)
+		sta work
+		ldy #1
+		lda (iaccl), y
+		adc forspm - $f, x
+		sta (iaccl), y
+		sta work + 1
+		iny
+		lda (iaccl), y
+		adc forspn - $f, x
+		sta (iaccl), y
+		sta work + 2
+		iny
+		lda (iaccl), y
+		adc forsph - $f, x
+		sta (iaccl), y
+		tay
+		lda work
+		sec
+		sbc forlml - $f, x
+		sta work
+		lda work + 1
+		sbc forlmm - $f, x
+		tsb work;WORK=WORK OR A
+		lda work + 2
+		sbc forlmn - $f, x
+		tsb work;WORK=WORK OR A
+		tya
+		sbc forlmh - $f, x
+		ora work;and so ORs all 4 bytes together
+		beq notfin
+		tya
+		eor forsph - $f, x
+		eor forlmh - $f, x
+		bpl fordrn
+		bcs notfin
+		bra finfor
+fordrn		bcs finfor
+notfin		ldy foradl - $f, x
+		lda foradh - $f, x
+		sty line
+		sta line + 1
+		jsr secur
+		jmp stmt
+finfor		txa
+		sec
+		sbc #$0f
+		sta forstp
+		ldy aecur
+		sty cursor
+		jsr chkcom
+		bne nxtfin
+		jmp next
+fnext		jsr varfp;X maintained
+		txa
+		clc
+		adc #< forspl - $f
+		sta argp
+		lda #> forspl
+		sta argp + 1
+		jsr fadd;X smashed
+		lda iaccl
+		sta work
+		lda iaccm
+		sta work + 1
+		jsr storpf;X maintained
+		ldx forstp
+		txa
+		clc
+		adc #< forlml - $f
+		sta argp;argp+1=/FORSPL=/FORLML
+		jsr fcmp
+		beq notfin
+		lda forspl - $e, x
+		bmi ffordr
+		bcs notfin
+		bra finfor
+ffordr		bcc notfin
+		bra finfor
+nxtfin		jmp sunk
+forcv		brk
+	!tx $22
+	!tx tfor , " variable"
+fordp		brk
+	!tx $23
+	!tx "Too many " , tfor , "s"
+forto		brk
+	!tx $24
+	!tx "No " , tto
+		brk
+for		jsr craelv
+		beq forcv
+		bcs forcv
+		jsr phaddr
+		jsr eqeat
+		jsr stexpr
+		jsr aespac
+		cmp #tto
+		bne forto
+		ldy forstp
+		cpy #fortop
+		bcs fordp
+		tya
+		adc #$0f;carry clear
+		sta forstp
+		lda work
+		sta forinl, y
+		lda work + 1
+		sta forinh, y
+		lda work + 2
+		sta forint, y
+		cmp #$05
+		beq ffor
+		jsr inexpr
+		ldy forstp
+		lda iaccl
+		sta forlml - $f, y
+		lda iaccm
+		sta forlmm - $f, y
+		lda iaccn
+		sta forlmn - $f, y
+		lda iacch
+		sta forlmh - $f, y
+		lda #1
+		jsr sinstk
+		jsr aespac
+		cmp #tstep
+		bne forstw
+		jsr inexpr
+		ldy aecur
+forstw		sty cursor
+		ldy forstp
+		lda iaccl
+		sta forspl - $f, y
+		lda iaccm
+		sta forspm - $f, y
+		lda iaccn
+		sta forspn - $f, y
+		lda iacch
+		sta forsph - $f, y
+forn		jsr forr
+		ldy forstp
+		lda line
+		sta foradl - $f, y
+		lda line + 1
+		sta foradh - $f, y
+		jmp stmt
+ffor		jsr expr
+		jsr floati
+		lda forstp
+		clc
+		adc #< forlml - $f
+		sta argp
+		lda #> forlml
+		sta argp + 1
+		jsr fsta
+		jsr fone
+		jsr aespac
+		cmp #tstep
+		bne fforst
+		jsr expr
+		jsr floati
+		ldy aecur
+fforst		sty cursor
+		lda forstp
+		clc
+		adc #< forspl - $f
+		sta argp
+		lda #> forspl
+		sta argp + 1
+		jsr fsta
+		bra forn
+gosub		jsr gofact
+ongosb		jsr done
+		ldy substp
+		cpy #subtop
+		bcs gosdp
+		lda line
+		sta subadl, y
+		lda line + 1
+		sta subadh, y
+		inc substp
+		bra godone
+gosdp		brk
+	!tx $25
+	!tx "Too many " , tgosub , "s"
+retnun		brk
+	!tx $26
+	!tx "No " , tgosub
+		brk
+return		jsr done
+		ldx substp
+		beq retnun
+		dec substp
+		ldy subadl - 1, x
+		lda subadh - 1, x
+		sty line
+		sta line + 1
+returx		jmp nxt
+goto		jsr gofact
+		jsr done
+godone		lda trflag
+		beq gono
+		jsr trjoba
+gono		ldy #4
+		sty cursor
+		ldy work + 6
+		lda work + 7
+jumpay		sty line
+		sta line + 1
+		jmp stmt
+onergf		jsr done
+		jsr orderr
+		bra returx
+onerrg		jsr spaces
+		cmp #toff
+		beq onergf
+		ldy cursor
+		dey
+		jsr clyadp
+		stz cursor
+		lda line
+		sta errorh
+		lda line + 1
+		sta errorh + 1
+		jmp rem
+on		jsr spaces
+		cmp #terror
+		beq onerrg
+		dec cursor
+		jsr asexpr
+		cpx #tproc
+		beq onok
+		iny
+		cpx #tgoto
+		beq onok
+		cpx #tgosub
+		bne oner
+onok		phx
+		lda iaccm
+		ora iaccn
+		ora iacch
+		bne onrg
+		dec iaccl
+		beq ongot
+		bmi onrg
+;IACCM,IACCN=0
+onsrch		lda (line), y
+		cmp #$0d
+		beq onrg
+		cmp #":"
+		beq onrg
+		cmp #telse
+		beq onrg
+		iny
+		cmp #'"'
+		bne onsrcc
+		eor iaccm
+		sta iaccm
+onsrcc		ldx iaccm
+		bne onsrch;don't look inside string
+		cmp #")"
+		bne onsrca
+		dec iaccn
+onsrca		cmp #"("
+		bne onsrcb
+		inc iaccn
+onsrcb		cmp #","
+		bne onsrch
+		ldx iaccn
+		bne onsrch
+		dec iaccl
+		bne onsrch
+ongot		pla
+		cmp #tproc
+		beq onproc
+		sty cursor
+		cmp #tgosub
+		beq ongos
+		jsr gofact
+		jsr secur
+		jmp godone
+ongos		jsr gofact
+		ldy cursor
+		jsr onskip + 1
+		jmp ongosb
+onrg		pla
+onelse		lda (line), y
+		iny
+		cmp #telse
+		beq onels
+		cmp #$0d
+		bne onelse
+		brk
+	!tx $28
+	!tx ton , " range"
+oner		brk
+	!tx $27
+	!tx ton , " syntax"
+noline		brk
+	!tx $29
+	!tx "No such line"
+		brk
+onproc		sty aecur
+		jsr aespac
+		cmp #tproc
+		bne oner
+		jsr fnbody
+		ldy aecur
+		jsr onskip + 1
+		jmp donext
+onels		sty cursor
+		jmp thenln
+onskip		iny
+		lda (line), y;find end of ON stmt
+		cmp #$0d
+		beq skiped
+		cmp #":"
+		bne onskip
+skiped		sty cursor
+		rts
+gofact		jsr sptstn
+		bcs gotgo
+		jsr asexpr
+		lda #$80
+		trb iaccm
+gotgo		jsr fndlno
+		bcc noline
+		rts
+	;!source cbas0c

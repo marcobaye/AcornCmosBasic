@@ -1,0 +1,1126 @@
+;ACME 0.97
+;                        FILE 1      declarations and startup > CBAS01
+	*= $8000
+	;!cpu 1; this version solely for CMOS 6502
+
+!addr	repptr	= $fd
+!addr	lomem	= $00
+	fsa	= lomem + 2
+	aestkp	= fsa + 2
+	himem	= aestkp + 2
+	lolino	= himem + 2
+	cursor	= lolino + 2
+	line	= cursor + 1
+	seed	= line + 2
+	top	= seed + 5
+	prints	= top + 2
+	printf	= prints + 1
+!addr {
+	oscli	= $fff7
+	oswrch	= $ffee
+	osasci	= $ffe3
+	oscrlf	= $ffe7
+	osrdch	= $ffe0
+	osfile	= $ffdd
+	osargs	= $ffda
+	osbget	= $ffd7
+}
+	osbput	= osbget - 3
+	osfind	= osbput - 6
+!addr {
+	osbyte	= $fff4
+	osword	= $fff1
+}
+	errorh	= printf + 1
+	txtp	= errorh + 2
+	aeline	= txtp + 1
+	aecur	= aeline + 2
+	datap	= aecur + 1
+	tally	= datap + 2
+	listop	= tally + 1
+	trflag	= listop + 1
+	trnum	= trflag + 1
+	widthv	= trnum + 2
+	dostkp	= widthv + 1
+	substp	= dostkp + 1
+	forstp	= substp + 1
+	type	= forstp + 1
+	bytesm	= type + 1
+	opcode	= bytesm + 1
+	iaccl	= opcode + 1
+	iaccm	= iaccl + 1
+	iaccn	= iaccl + 2
+	iacch	= iaccl + 3
+	faccs	= iaccl + 4
+	faccxh	= faccs + 1
+	faccx	= faccxh + 1
+	faccma	= faccx + 1
+	faccmb	= faccma + 1
+	faccmc	= faccmb + 1
+	faccmd	= faccmc + 1
+	faccmg	= faccmd + 1
+	clen	= faccmg + 1
+	work	= clen + 1
+	mode	= work + 4
+	consta	= mode + 1
+	fwrks	= work + 4
+	fwrkx	= fwrks + 1
+	fwrkma	= fwrkx + 1
+	fwrkmb	= fwrkma + 1
+	fwrkmc	= fwrkmb + 1
+	fwrkmd	= fwrkmc + 1
+	fwrkmg	= fwrkmd + 1
+	ftmpma	= fwrkmg + 1
+	ftmpmb	= ftmpma + 1
+	ftmpmc	= ftmpmb + 1
+	ftmpmd	= ftmpmc + 1
+	ftmpmg	= ftmpmd + 1
+	frdddp	= ftmpmg + 1
+	frdddx	= frdddp + 1
+	fprtdx	= frdddx
+	frddw	= frdddx + 1
+	fquad	= frddw
+	argp	= fquad + 1
+	fprtwy	= argp + 2
+	fprtwn	= fprtwy + 1
+	fdigs	= fprtwn
+	coefp	= argp + 2
+	newvar	= coefp + 2
+!addr	varl	= $0400
+	pc	= varl + $40
+	fwsa	= varl + $6c
+	fwsb	= fwsa + 5
+	fwsc	= fwsb + 5
+	fwsd	= fwsc + 5
+!addr	varptr	= $0480
+!addr	doadl	= $0500
+	doadh	= doadl + $14
+	forinl	= doadh + $14
+	forinh	= forinl + 1
+	forint	= forinh + 1
+	forspl	= forint + 1
+	forspm	= forspl + 1
+	forspn	= forspm + 1
+	forsph	= forspn + 1
+	forspe	= forsph + 1
+	forlml	= forspe + 1
+	forlmm	= forlml + 1
+	forlmn	= forlmm + 1
+	forlmh	= forlmn + 1
+	forlme	= forlmh + 1
+	foradl	= forlme + 1
+	foradh	= foradl + 1
+	subadl	= foradh + $96
+	subadh	= subadl + $1a
+!addr	stracc	= $0600
+!addr	buffer	= $0700
+	fortop	= $96
+	subtop	= $1a
+	dotop	= $14
+bb		cmp #1
+		beq entry
+		rts
+		nop
+	!tx $60;defn
+	!tx <copyr
+	!tx $04;ver
+	!tx "BASIC"
+
+copyr	!tx 0
+	!tx "(C)1984 Acorn" , 10 , 13
+	!tx 0
+	!wo bb
+valm	!tx $00
+	!tx $00;next two zeroes!
+	!tx $00
+	!tx $03
+	!tx $27
+vall	!tx $01;table of numeric values
+	!tx $0a
+	!tx $64
+	!tx $e8
+	!tx $10
+entry		and seed + 4;A was 1 so test bottom bit
+		ora seed
+		ora seed + 1
+		ora seed + 2
+		ora seed + 3
+		bne rndok
+		lda #"A"
+		sta seed
+		eor #'R' xor 'A'
+		sta seed + 1
+		eor #'W' xor 'R'
+		sta seed + 2
+rndok		lda #$84
+		jsr osbyte
+		stx himem
+		sty himem + 1
+		dec;A=&83 now
+		jsr osbyte
+		sty txtp
+		stz listop
+		stz varl + 2
+		stz varl + 3
+		ldx #$ff
+		stx widthv
+		ldx #10
+		stx varl
+		dex
+		stx varl + 1
+		lda #< brek
+		sta $202
+		lda #> brek
+		sta $203
+		cli
+		jmp entryy
+lookfn		sty work + 2
+		ldy #1
+		lda (work), y
+		ldy #$f6
+		cmp #tproc
+		beq lookmn
+		ldy #$f8
+		bra lookmn
+;  LOOKUP is given a base address-1 in WORK,WORK+1 length+1 in Y
+;  It returns with EQ set if it can't find the thing, else with
+;  IACCL,IACCM pointing to the data item and NEQ.
+;  Note that the data is stored ADDRL,ADDRH,"R","E","D",0
+lookup		sty work + 2
+		ldy #1
+		lda (work), y
+		asl
+		tay
+lookmn		lda varptr - $7f, y
+		beq lookfx
+		sta iaccm
+		lda varptr - $80, y
+		bra looplc
+looplb		ldy #1
+		lda (iaccl), y
+		beq lookfx
+		tay
+		lda (iaccl)
+		sty iaccm
+looplc		sta iaccl
+		ldy #2
+		lda (iaccl), y
+		bne loopsa
+		cpy work + 2
+		bne looplb
+		bra loopta
+loopra		lda (iaccl), y
+		beq looplb
+loopsa		cmp (work), y
+		bne looplb
+		iny
+		cpy work + 2
+		bne loopra
+		lda (iaccl), y
+		bne looplb
+loopta		tya
+		adc iaccl
+		sta iaccl
+		bcc lookfx;NEQ if taken because adding Y and C=1
+		inc iaccm;this is what sets NEQ (!)
+lookfx		rts
+fndlno		stz work + 6;find line number in iacc
+		lda txtp
+		sta work + 7
+sight		ldy #1
+		lda (work + 6), y
+		cmp iaccm
+		bcs look
+lookr		ldy #3
+		lda (work + 6), y
+		adc work + 6
+		sta work + 6
+		bcc sight
+		inc work + 7
+		bra sight
+look		bne past
+		iny;Y was 1
+		lda (work + 6), y
+		cmp iaccl
+		bcc lookr
+	+assert > sight = > *
+		bne past
+		rts; carry set if found
+past		ldy #2
+		clc
+		rts
+divop		jsr integy;divide with remainder
+		lda iacch
+		pha
+		jsr abscom
+		jsr phpow
+		stx type
+		jsr integy
+		pla
+		sta work + 1
+		eor iacch
+		sta work
+		jsr abscom
+		ldx #work + 2
+		jsr popx
+		stz work + 6
+		stz work + 7
+		stz work + 8
+		stz work + 9
+		lda iacch
+		ora iaccl
+		ora iaccm
+		ora iaccn
+		beq zdivor
+		ldy #$20
+divjus		dey
+		beq divret
+		asl work + 2
+		rol work + 3
+		rol work + 4
+		rol work + 5
+		bpl divjus
+diver		rol work + 2
+		rol work + 3
+		rol work + 4
+		rol work + 5
+		rol work + 6
+		rol work + 7
+		rol work + 8
+		rol work + 9
+		sec
+		lda work + 6
+		sbc iaccl
+		pha
+		lda work + 7
+		sbc iaccm
+		pha
+		lda work + 8
+		sbc iaccn
+		tax
+		lda work + 9
+		sbc iacch
+		bcc nosub
+		sta work + 9
+		stx work + 8
+		pla
+		sta work + 7
+		pla
+		sta work + 6
+		bcs nosub + 2
+nosub		pla
+		pla
+		dey
+		bne diver
+	+assert > diver = > *
+divret		rts
+zdivor		brk
+	!tx $12
+	!tx "Division by zero"
+		brk
+iflt		stz faccmg
+		stz faccxh
+		lda iacch;+4 possible entry point
+		sta faccs
+		bpl iflta
+		jsr compno
+		lda iacch
+iflta		bne ifltac
+		stz faccmd
+		lda iaccn
+		bne ifltad
+		stz faccmc
+		lda iaccm
+		bne ifltae
+		stz faccmb
+		lda iaccl
+		bra fltaa
+ifltae		ldy iaccl
+		sty faccmb
+		ldy #$90
+		bra fltaa + 2
+ifltad		ldy iaccm
+		sty faccmb
+		ldy iaccl
+		sty faccmc
+		ldy #$98
+		bra fltaa + 2
+ifltac		ldy iaccn
+		sty faccmb
+		ldy iaccm
+		sty faccmc
+		ldy iaccl
+		sty faccmd
+		ldy #$a0
+		bra fltaa + 2
+fnrmz		stz faccs
+		stz faccx
+		stz faccxh
+		stz faccma
+fnrmx		rts
+;   FLTACC FLOATS 8 BIT ACC
+fltacc		jsr fclr
+		tay
+		bpl fltaa;>=0
+		sta faccs;SET SIGN IN ACC
+		eor #$ff
+		inc
+fltaa		ldy #$88
+		ora #0
+		bmi fnrmx2
+		beq fnrmz
+fnrmb2		dey
+		asl faccmd
+		rol faccmc
+		rol faccmb
+		rol
+		bpl fnrmb2
+	+assert > fnrmb2 = > *
+fnrmx2		sta faccma
+		sty faccx
+		rts
+;   FNRM NORMALIZES THE AC USING 16 BIT EXPONENT, SO
+;   NO WORRY ABOUT EXPONENT OVERFLOW
+fnrm		lda faccma;+2 and +4 also entry points
+		bmi fnrmx
+		bne fnrmaz
+		ora faccmb
+		ora faccmc
+		ora faccmd
+		ora faccmg
+		beq fnrmz
+		lda faccx
+fnrma		ldy faccmb
+		sty faccma
+		ldy faccmc
+		sty faccmb
+		ldy faccmd
+		sty faccmc
+		ldy faccmg
+		sty faccmd
+		stz faccmg
+		sec
+		sbc #$08;MOVED BY A BYTE
+		bcs fnrms;TRY AGAIN
+		dec faccxh
+fnrms		ldy faccma
+		beq fnrma
+	+assert > fnrma = > *
+		bmi fnrmxa;FULLY NORMALIZED
+		bra fnrmb - 1
+fnrmaz		lda faccx
+		clc
+fnrmb		sbc #0;carry clear from ROL
+		bcs fnrmc
+		dec faccxh
+fnrmc		asl faccmg
+		rol faccmd
+		rol faccmc
+		rol faccmb
+		rol faccma
+		bpl fnrmb
+	+assert > fnrmb = > *
+fnrmxa		sta faccx
+		rts
+sfix		lda faccx
+		bpl ffixq + 3;starts with <1
+		ldy faccma
+		beq ffixyj;except for 0
+sfixg		lsr faccma
+		ror faccmb
+		ror faccmc
+		ror faccmd
+		inc
+		beq ffixv
+sfixb		cmp #$a0
+		bcs ffixc;DONE, OR OVERSHOT
+		cmp #$99
+		bcs sfixg
+		adc #$08
+		ldy faccmc
+		sty faccmd
+		ldy faccmb
+		sty faccmc
+		ldy faccma
+		sty faccmb
+		stz faccma
+		bra sfixb
+	+assert > sfixg = > *
+;FFIX leaves faccma-faccmd as a 32 bit integer. Truncates towards zero.
+;After a call to ffix, ffrac sets acc to remaining fractional part.
+;FFIXA shifts acc right until exponent is $A0.
+;Bits shifted out of the bottom of A go into wrk.
+ffixq		jsr ftow
+		jmp fclr
+ffix		lda faccx
+		bpl ffixq;starts with <1
+		jsr fclrw
+		ldy faccma
+ffixyj		beq ffixy;Always shift at least once except for 0
+ffixg		lsr faccma
+		ror faccmb
+		ror faccmc
+		ror faccmd
+		ror fwrkma
+		ror fwrkmb
+		ror fwrkmc
+		ror fwrkmd;ROTATE DOWN INTO WORK.
+		inc
+		beq ffixv
+ffixb		cmp #$a0
+		bcs ffixc;DONE, OR OVERSHOT
+		cmp #$99
+		bcs ffixg
+		adc #$08
+		ldy fwrkmc
+		sty fwrkmd
+		ldy fwrkmb
+		sty fwrkmc
+		ldy fwrkma
+		sty fwrkmb
+		ldy faccmd
+		sty fwrkma
+		ldy faccmc
+		sty faccmd
+		ldy faccmb
+		sty faccmc
+		ldy faccma
+		sty faccmb
+		stz faccma
+		bra ffixb
+	+assert > ffixg = > *
+;   HERE I HAVE OVERFLOW
+ffixv		jmp fovr
+ffixc		bne ffixv
+		sta faccx
+ffixy		lda faccs
+		bpl ffixz;>=0.0 SO DONE NOW
+;   FINEG NEGATES 32 BIT INTEGER IN FACCMA-FACCMD
+fineg		sec
+		ldy #0
+		tya
+		sbc faccmd
+		sta faccmd
+		tya
+		sbc faccmc
+		sta faccmc
+		tya
+		sbc faccmb
+		sta faccmb
+		tya
+		sbc faccma
+		sta faccma
+ffixz		rts
+;FFRAC SETS FQUAD TO THE INTEGER PART OF AC, AND AC TO ITS FRACTIONAL PART.
+;RETURNS WITH CONDITION CODE SET ZERO IF FRACTION IS ZERO.
+;ASSUMES THAT ON INPUT FIX(ACC) < 128.
+ffrac		lda faccx
+		bmi ffraca;NORMAL CASE
+		stz fquad
+		jmp ftst;ABS(AC)<0.5 ON ENTRY
+ffraca		jsr ffix
+		lda faccmd
+		sta fquad
+		jsr fmwtoa
+		lda #$80
+		sta faccx
+		ldx faccma
+		bpl fnearn;FRACTION PART < 0.5
+		eor faccs
+		sta faccs;CHANGE SIGN OF FRACTION PART
+		bpl fnearq
+		inc fquad
+		bra fnearr
+fnearq		dec fquad
+fnearr		jsr fineg;ACHIEVES FRACT := 1 - FRACT
+fnearn		jmp fnrm
+finc		inc faccmd
+		bne fnearz
+		inc faccmc
+		bne fnearz
+		inc faccmb
+		bne fnearz
+		inc faccma
+		beq ffixv;OVERFLOW
+fnearz		rts
+frndab		ldy #4
+rtop		ror seed + 4
+		lda seed + 3
+		tax
+		ror
+		sta seed + 4
+		lda seed + 2
+		sta seed + 3
+		lsr
+		eor seed + 1
+		and #$0f
+		eor seed + 1
+		ror
+		ror
+		ror
+		ror
+		eor seed + 4
+		stx seed + 4
+		ldx seed + 1
+		stx seed + 2
+		ldx seed
+		stx seed + 1
+		sta seed
+		dey
+		bne rtop
+	+assert > rtop = > *
+		rts
+fwtoa		lda fwrks
+		sta faccs
+		stz faccxh
+		lda fwrkx
+		sta faccx
+fmwtoa		lda fwrkma
+		sta faccma
+		lda fwrkmb
+		sta faccmb
+		lda fwrkmc
+		sta faccmc
+		lda fwrkmd
+		sta faccmd
+		lda fwrkmg
+		sta faccmg
+faddz		rts
+faddw1		lda faccma;SEE IF ADDING TO 0
+		beq fwtoa;LOAD WITH W
+;   HERE I HAVE A NONTRIVIAL ADD
+		sec
+		lda faccx
+		sbc fwrkx
+		beq fadda
+		bcc faddb;X(ACC)<X(WRK)
+		cmp #$25
+		bcs faddz;SHIFT TOO LARGE FOR SIGNIFICANCE
+;   Now shift W right
+		tay
+		and #$38
+		beq faddca
+		sec
+faddcb		ldx fwrkmd
+		stx fwrkmg
+		ldx fwrkmc
+		stx fwrkmd
+		ldx fwrkmb
+		stx fwrkmc
+		ldx fwrkma
+		stx fwrkmb
+		stz fwrkma
+		sbc #8
+		bne faddcb
+faddca		tya
+		and #$07
+		beq fadda
+faddc		lsr fwrkma
+		ror fwrkmb
+		ror fwrkmc
+		ror fwrkmd
+		ror fwrkmg
+		dec
+		bne faddc
+	+assert > faddc = > *
+		bra fadda;ALIGNED
+faddb		eor #$ff
+		inc;AMOUNT TO SHIFT ACC
+		cmp #$25
+		bcs fwtoa;ACC NOT SIGNIFICANT
+		ldy fwrkx;X(RESULT) FROM X(WRK)
+		sty faccx
+;   Now shift ACC right
+		tay
+		and #$38
+		beq faddda
+		sec
+fadddb		ldx faccmd
+		stx faccmg
+		ldx faccmc
+		stx faccmd
+		ldx faccmb
+		stx faccmc
+		ldx faccma
+		stx faccmb
+		stz faccma
+		sbc #8
+		bne fadddb
+faddda		tya
+		and #$07
+		beq fadda
+faddd		lsr faccma
+		ror faccmb
+		ror faccmc
+		ror faccmd
+		ror faccmg
+		dec
+		bne faddd
+	+assert > faddd = > *
+;     DROP THROUGH TO FADDA
+fadda		lda faccs
+		eor fwrks
+		bmi fadde;different signs
+		clc;BOTH SAME SIGN
+		jmp fplwf
+fadde		lda faccma
+		cmp fwrkma
+		bne faddf
+		lda faccmb
+		cmp fwrkmb
+		bne faddf
+		lda faccmc
+		cmp fwrkmc
+		bne faddf
+		lda faccmd
+		cmp fwrkmd
+		bne faddf
+		lda faccmg
+		cmp fwrkmg
+		bne faddf
+		jmp fclr;ACC=WRK IN DIFFERENCE CASE
+faddf		bcs faddg;ABS ACC>ABS WRK
+		lda fwrks
+		sta faccs
+		sec
+		lda fwrkmg
+		sbc faccmg
+		sta faccmg
+		lda fwrkmd
+		sbc faccmd
+		sta faccmd
+		lda fwrkmc
+		sbc faccmc
+		sta faccmc
+		lda fwrkmb
+		sbc faccmb
+		sta faccmb
+		lda fwrkma
+		sbc faccma
+		sta faccma;OVERFLOW IMPOSSIBLE
+		jmp fnrm + 2
+faddg		lda faccmg;carry set at faddf
+		sbc fwrkmg
+		sta faccmg
+		lda faccmd
+		sbc fwrkmd
+		sta faccmd
+		lda faccmc
+		sbc fwrkmc
+		sta faccmc
+		lda faccmb
+		sbc fwrkmb
+		sta faccmb
+		lda faccma
+		sbc fwrkma
+		sta faccma
+		jmp fnrm + 2
+
+;  lexical tokens and name table
+
+;  The table contains lexical tokens and an action byte
+;    6 - polymorphic
+;    5 - give up completely
+;    4 - constant/list of constants may follow
+;    3 - while byte<>wordc skip
+;    2 - transfer to l mode
+;    1 - transfer to r mode
+;    0 - ignore if next character is wordc
+
+;  Every token is recognizable at the start of any word
+
+	tand	= $80;expression binary operators
+	tdiv	= tand + 1
+	teor	= tdiv + 1
+	tmod	= teor + 1
+	tor	= tmod + 1
+
+	terror	= tor + 1;miscellaneous words
+	tline	= terror + 1
+	toff	= tline + 1
+	tstep	= toff + 1
+	tspc	= tstep + 1
+	ttab	= tspc + 1
+	telse	= ttab + 1
+	tthen	= telse + 1
+
+	tconst	= tthen + 1;(8D)
+
+	topenu	= tconst + 1
+	tptr	= topenu + 1;polymorphics as functions
+	tpage	= tptr + 1
+	ttime	= tpage + 1
+	tlomm	= ttime + 1
+	thimm	= tlomm + 1
+
+	tabs	= thimm + 1;expression class of unary operators
+	tacs	= tabs + 1
+	tadc	= tacs + 1
+	tasc	= tadc + 1
+	tasn	= tasc + 1
+	tatn	= tasn + 1
+	tbget	= tatn + 1
+	tcos	= tbget + 1
+	tcount	= tcos + 1
+	tdeg	= tcount + 1
+	terl	= tdeg + 1
+	terr	= terl + 1
+	teval	= terr + 1
+	texp	= teval + 1
+	text	= texp + 1
+	tfalse	= text + 1
+	tfn	= tfalse + 1
+	tget	= tfn + 1
+	tinkey	= tget + 1
+	tinstr	= tinkey + 1
+	tint	= tinstr + 1
+	tlen	= tint + 1
+	tln	= tlen + 1
+	tlog	= tln + 1
+	tnot	= tlog + 1
+	topeni	= tnot + 1
+	topeno	= topeni + 1
+	tpi	= topeno + 1
+	tpoint	= tpi + 1
+	tpos	= tpoint + 1
+	trad	= tpos + 1
+	trnd	= trad + 1
+	tsgn	= trnd + 1
+	tsin	= tsgn + 1
+	tsqr	= tsin + 1
+	ttan	= tsqr + 1
+	tto	= ttan + 1
+	ttrue	= tto + 1
+	tusr	= ttrue + 1
+	tval	= tusr + 1
+	tvpos	= tval + 1
+	tchrd	= tvpos + 1;string expression class of unary operators
+	tgetd	= tchrd + 1
+	tinked	= tgetd + 1
+	tleftd	= tinked + 1
+	tmidd	= tleftd + 1
+	trightd	= tmidd + 1
+	tstrd	= trightd + 1
+	tstrnd	= tstrd + 1
+	teof	= tstrnd + 1
+
+	tauto	= teof + 1;commands
+	tdelet	= tauto + 1
+	tload	= tdelet + 1
+	tlist	= tload + 1
+	tnew	= tlist + 1
+	told	= tnew + 1
+	trenum	= told + 1
+	tsave	= trenum + 1
+	tedit	= tsave + 1
+
+	tptr2	= tedit + 1;polymorphics again
+	tpage2	= tptr2 + 1
+	ttime2	= tpage2 + 1
+	tlomm2	= ttime2 + 1
+	thimm2	= tlomm2 + 1
+
+	tbeep	= thimm2 + 1;statements
+	tbput	= tbeep + 1
+	tcall	= tbput + 1
+	tchain	= tcall + 1
+	tclear	= tchain + 1
+	tclose	= tclear + 1
+	tclg	= tclose + 1
+	tcls	= tclg + 1
+	tdata	= tcls + 1
+	tdef	= tdata + 1
+	tdim	= tdef + 1
+	tdraw	= tdim + 1
+	tend	= tdraw + 1
+	tendpr	= tend + 1
+	tenvel	= tendpr + 1
+	tfor	= tenvel + 1
+	tgosub	= tfor + 1
+	tgoto	= tgosub + 1
+	tgraph	= tgoto + 1
+	tif	= tgraph + 1
+	tinput	= tif + 1
+	tlet	= tinput + 1
+	tlocal	= tlet + 1
+	tmode	= tlocal + 1
+	tmove	= tmode + 1
+	tnext	= tmove + 1
+	ton	= tnext + 1
+	tvdu	= ton + 1
+	tplot	= tvdu + 1
+	tprint	= tplot + 1
+	tproc	= tprint + 1
+	tread	= tproc + 1
+	trem	= tread + 1
+	trepeat	= trem + 1
+	treport	= trepeat + 1
+	trestore	= treport + 1
+	treturn	= trestore + 1
+	trun	= treturn + 1
+	tstop	= trun + 1
+	ttext	= tstop + 1
+	ttrace	= ttext + 1
+	tuntil	= ttrace + 1
+	twidth	= tuntil + 1
+	toscl	= twidth + 1;this must be <=&FF (!)
+
+tokens	!tx "AND";this table MUST be alphabetic in first char
+	!tx tand , 0
+	!tx "ABS"
+	!tx tabs , 0
+	!tx "ACS"
+	!tx tacs , 0
+	!tx "ADVAL"
+	!tx tadc , 0
+	!tx "ASC"
+	!tx tasc , 0
+	!tx "ASN"
+	!tx tasn , 0
+	!tx "ATN"
+	!tx tatn , 0
+	!tx "AUTO"
+	!tx tauto , $10
+	!tx "BGET"
+	!tx tbget , 1
+	!tx "BPUT"
+	!tx tbput , 3
+	!tx "COLOUR"
+	!tx ttext , 2
+	!tx "CALL"
+	!tx tcall , 2
+	!tx "CHAIN"
+	!tx tchain , 2
+	!tx "CHR$"
+	!tx tchrd , 0
+	!tx "CLEAR"
+	!tx tclear , 1
+	!tx "CLOSE"
+	!tx tclose , 3
+	!tx "CLG"
+	!tx tclg , 1
+	!tx "CLS"
+	!tx tcls , 1
+	!tx "COS"
+	!tx tcos , 0
+	!tx "COUNT"
+	!tx tcount , 1
+	!tx "COLOR";for the Yanks
+	!tx ttext , 2
+	!tx "DATA"
+	!tx tdata , $20
+	!tx "DEG"
+	!tx tdeg , 0
+	!tx "DEF"
+	!tx tdef , 0
+	!tx "DELETE"
+	!tx tdelet , $10
+	!tx "DIV"
+	!tx tdiv , 0
+	!tx "DIM"
+	!tx tdim , 2
+	!tx "DRAW"
+	!tx tdraw , 2
+	!tx "ENDPROC"
+	!tx tendpr , 1
+	!tx "END"
+	!tx tend , 1
+	!tx "ENVELOPE"
+	!tx tenvel , 2
+	!tx "ELSE"
+	!tx telse , $14
+	!tx "EVAL"
+	!tx teval , 0
+	!tx "ERL"
+	!tx terl , 1
+	!tx "ERROR"
+	!tx terror , 4
+	!tx "EOF"
+	!tx teof , 1
+	!tx "EOR"
+	!tx teor , 0
+	!tx "ERR"
+	!tx terr , 1
+	!tx "EXP"
+	!tx texp , 0
+	!tx "EXT"
+	!tx text , 1
+	!tx "EDIT"
+	!tx tedit , $10
+	!tx "FOR"
+	!tx tfor , 2
+	!tx "FALSE"
+	!tx tfalse , 1
+	!tx "FN"
+	!tx tfn , 8
+	!tx "GOTO"
+	!tx tgoto , $12
+	!tx "GET$"
+	!tx tgetd , 0
+	!tx "GET"
+	!tx tget , 0
+	!tx "GOSUB"
+	!tx tgosub , $12
+	!tx "GCOL"
+	!tx tgraph , 2
+	!tx "HIMEM"
+	!tx thimm , $43
+	!tx "INPUT"
+	!tx tinput , 2
+	!tx "IF"
+	!tx tif , 2
+	!tx "INKEY$"
+	!tx tinked , 0
+	!tx "INKEY"
+	!tx tinkey , 0
+	!tx "INT"
+	!tx tint , 0
+	!tx "INSTR("
+	!tx tinstr , 0
+	!tx "LIST"
+	!tx tlist , $10
+	!tx "LINE"
+	!tx tline , 0
+	!tx "LOAD"
+	!tx tload , 2
+	!tx "LOMEM"
+	!tx tlomm , $43
+	!tx "LOCAL"
+	!tx tlocal , 2
+	!tx "LEFT$("
+	!tx tleftd , 0
+	!tx "LEN"
+	!tx tlen , 0
+	!tx "LET"
+	!tx tlet , 4
+	!tx "LOG"
+	!tx tlog , 0
+	!tx "LN"
+	!tx tln , 0
+	!tx "MID$("
+	!tx tmidd , 0
+	!tx "MODE"
+	!tx tmode , 2
+	!tx "MOD"
+	!tx tmod , 0
+	!tx "MOVE"
+	!tx tmove , 2
+	!tx "NEXT"
+	!tx tnext , 2
+	!tx "NEW"
+	!tx tnew , 1
+	!tx "NOT"
+	!tx tnot , 0
+	!tx "OLD"
+	!tx told , 1
+	!tx "ON"
+	!tx ton , 2
+	!tx "OFF"
+	!tx toff , 0
+	!tx "OR"
+	!tx tor , 0
+	!tx "OPENIN"
+	!tx topenu , 0
+	!tx "OPENOUT"
+	!tx topeno , 0
+	!tx "OPENUP"
+	!tx topeni , 0
+	!tx "OSCLI"
+	!tx toscl , 2
+	!tx "PRINT"
+	!tx tprint , 2
+	!tx "PAGE"
+	!tx tpage , $43
+	!tx "PTR"
+	!tx tptr , $43
+	!tx "PI"
+	!tx tpi , 1
+	!tx "PLOT"
+	!tx tplot , 2
+	!tx "POINT("
+	!tx tpoint , 0
+	!tx "PROC"
+	!tx tproc , $0a
+	!tx "POS"
+	!tx tpos , 1
+	!tx "RETURN"
+	!tx treturn , 1
+	!tx "REPEAT"
+	!tx trepeat , 0
+	!tx "REPORT"
+	!tx treport , 1
+	!tx "READ"
+	!tx tread , 2
+	!tx "REM"
+	!tx trem , $20
+	!tx "RUN"
+	!tx trun , 1
+	!tx "RAD"
+	!tx trad , 0
+	!tx "RESTORE"
+	!tx trestore , $12
+	!tx "RIGHT$("
+	!tx trightd , 0
+	!tx "RND"
+	!tx trnd , 1
+	!tx "RENUMBER"
+	!tx trenum , $10
+	!tx "STEP"
+	!tx tstep , 0
+	!tx "SAVE"
+	!tx tsave , 2
+	!tx "SGN"
+	!tx tsgn , 0
+	!tx "SIN"
+	!tx tsin , 0
+	!tx "SQR"
+	!tx tsqr , 0
+	!tx "SPC"
+	!tx tspc , 0
+	!tx "STR$"
+	!tx tstrd , 0
+	!tx "STRING$("
+	!tx tstrnd , 0
+	!tx "SOUND"
+	!tx tbeep , 2
+	!tx "STOP"
+	!tx tstop , 1
+	!tx "TAN"
+	!tx ttan , 0
+	!tx "THEN"
+	!tx tthen , $14
+	!tx "TO"
+	!tx tto , 0
+	!tx "TAB("
+	!tx ttab , 0
+	!tx "TRACE"
+	!tx ttrace , $12
+	!tx "TIME"
+	!tx ttime , $43
+	!tx "TRUE"
+	!tx ttrue , 1
+	!tx "UNTIL"
+	!tx tuntil , 2
+	!tx "USR"
+	!tx tusr , 0
+	!tx "VDU"
+	!tx tvdu , 2
+	!tx "VAL"
+	!tx tval , 0
+	!tx "VPOS"
+	!tx tvpos , 1
+	!tx "WIDTH"
+	!tx twidth , 2
+	!tx "PAGE";dratted polymorphics again
+	!tx tpage2 , 0
+	!tx "PTR"
+	!tx tptr2 , 0
+	!tx "TIME"
+	!tx ttime2 , 0
+	!tx "LOMEM"
+	!tx tlomm2 , 0
+	!tx "HIMEM"
+	!tx thimm2 , 0
+	!tx "Missing "
+	!tx $8d , 0
+	;!source cbas02

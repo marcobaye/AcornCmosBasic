@@ -1,0 +1,370 @@
+;ACME 0.97
+
+;                                   FILE D     function call > CBAS0A
+
+fnmiss		pla
+		sta line + 1
+		pla
+		sta line
+		brk
+	!tx $1d
+	!tx "No such " , tfn , "/" , tproc
+		brk
+fndef		lda txtp;WORK+2 has been set by LOOKFN
+		sta line + 1
+		stz line
+fnfind		ldy #1
+		lda (line), y
+		bmi fnmiss
+		ldy #3
+fnfins		iny
+		lda (line), y
+		cmp #" "
+		beq fnfins
+		cmp #tdef
+		beq deffnd
+nexlin		ldy #3
+		lda (line), y
+		clc
+		adc line
+		sta line
+		bcc fnfind
+		inc line + 1
+		bra fnfind
+deffnd		iny
+		sty cursor
+		jsr spaces
+		tya
+		tax
+		clc
+		adc line
+		ldy line + 1
+		bcc fnfdin
+		iny
+		clc
+fnfdin		sbc #0
+		sta work + 5
+		tya
+		sbc #0
+		sta work + 6
+		ldy #1
+fnfdlk		inx
+		lda (work + 5), y
+		cmp (work), y
+		bne nexlin
+		iny
+		cpy work + 2
+		bne fnfdlk
+		lda (work + 5), y
+		jsr wordcq
+		bcs nexlin
+		txa
+		tay
+		jsr clyadp
+		jsr creafn
+		ldx #1
+		jsr creax
+		lda line
+		sta (fsa)
+		ldy #1
+		lda line + 1
+		sta (fsa), y
+		iny
+		jsr fsapy
+		jmp fngo
+fncall		brk
+	!tx $1e
+	!tx "Bad call"
+		brk
+fn		lda #tfn
+fnbody		sta type
+		tsx
+		txa
+		clc
+		adc aestkp
+		jsr hidec
+		txa
+		sta (aestkp)
+		ldy #0
+fnphlp		inx
+		iny
+		lda $0100, x
+		sta (aestkp), y
+		cpx #$ff
+		bne fnphlp
+		txs
+		lda type
+		pha
+		lda cursor
+		pha
+		lda line
+		pha
+		lda line + 1
+		pha
+		lda aecur
+		tax
+		clc
+		adc aeline
+		ldy aeline + 1
+		bcc fnnoic
+		iny
+		clc
+fnnoic		sbc #1
+		sta work
+		tya
+		sbc #0
+		sta work + 1
+		ldy #2
+		jsr wordlp
+		cpy #2
+		beq fncall
+		stx aecur
+		jsr lookfn
+		bne fngoa
+		jmp fndef
+fngoa		lda (iaccl)
+		sta line
+		ldy #1
+		lda (iaccl), y
+		sta line + 1
+fngo		lda #0
+		pha
+		stz cursor
+		jsr spaces
+		cmp #"("
+		beq fnargs
+		dec cursor
+dofn		lda aecur
+		pha
+		lda aeline
+		pha
+		lda aeline + 1
+		pha
+		jsr stmt;type now contains type
+		pla
+		sta aeline + 1
+		pla
+		sta aeline
+		pla
+		sta aecur
+		pla
+		beq dnargs
+		sta work + 8
+gtargs		jsr popwrk
+		jsr storst
+		dec work + 8
+		bne gtargs
+dnargs		pla
+		sta line + 1
+		pla
+		sta line
+		pla
+		sta cursor
+		pla
+		lda (aestkp)
+		tax
+		txs
+		ldy #0
+fnpllp		iny
+		inx
+		lda (aestkp), y
+		sta $0100, x
+		cpx #$ff
+		bne fnpllp
+		tya
+		adc aestkp
+		sta aestkp
+		bcc fnpl
+		inc aestkp + 1
+fnpl		lda type
+		rts
+fnargs		lda aecur;hpush aeline
+		pha
+		lda aeline
+		pha
+		lda aeline + 1
+		pha
+		jsr craelv
+		beq argmat
+		lda aecur
+		sta cursor
+		pla;hpull aeline
+		sta aeline + 1
+		pla
+		sta aeline
+		pla
+		sta aecur
+		plx;hpull args
+		lda iaccn;hpush lvalue
+		pha
+		lda iaccm
+		pha
+		lda iaccl
+		pha
+		inx;args:=args+1
+		phx;hpush args
+		jsr retinf;bpush return info
+		jsr chkcom
+		beq fnargs
+		cmp #")"
+		bne argmat
+		lda #0;hpush 0
+		pha
+		jsr aespac
+		cmp #"("
+		bne argmat
+fnargp		jsr expr
+		jsr phtype;bpush val
+		lda type;bpush type
+		sta iacch
+		jsr phacc
+		plx;hpull args;inc args;hpush args
+		inx
+		phx
+		jsr comchk
+		beq fnargp
+		cmp #")"
+		bne argmat
+		pla
+		pla
+		sta coefp
+		sta coefp + 1
+		cpx coefp
+		beq fnargz
+argmat		ldx #$fb
+		txs
+		pla
+		sta line + 1
+		pla
+		sta line
+		brk
+	!tx $1f
+	!tx "Arguments"
+		brk
+fnargz		jsr popacc;bpull type
+		pla;hpull lv
+		sta iaccl
+		pla
+		sta iaccm
+		pla
+		sta iaccn
+		bmi fnargy
+		lda iacch
+		beq argmat
+		sta type
+		ldx #work
+		jsr acctom
+		lda type
+		bpl fnarpo
+		jsr popset
+		jsr flda
+		bra fnarop
+fnarpo		jsr popacc
+fnarop		jsr storf
+		bra fnargw
+fnargy		lda iacch
+		bne argmat
+		jsr popstr
+		jsr ststre
+fnargw		dec coefp
+		bne fnargz
+		lda coefp + 1
+		pha
+		jmp dofn
+retinf		ldy iaccn
+		cpy #5
+		bcs fninfo
+		ldx #work
+		jsr acctom
+fninfo		jsr varind
+		php
+		jsr phtype
+		plp
+		beq fnstrd
+		bmi fnstrd
+		ldx #work
+		jsr mtoacc
+fnstrd		jmp phacc
+varind		ldy iaccn
+		bmi facstr
+		beq varone
+		cpy #5
+		beq varfp
+		ldy #3
+		lda (iaccl), y
+		sta iacch
+		dey
+		lda (iaccl), y
+		sta iaccn
+		dey
+		lda (iaccl), y
+		tax
+		lda (iaccl)
+		sta iaccl
+		stx iaccm
+		lda #$40
+		rts
+varone		lda (iaccl), y
+		jmp ayacc
+varfp		stz faccmg
+		stz faccxh
+		dey
+		lda (iaccl), y
+		sta faccmd
+		dey
+		lda (iaccl), y
+		sta faccmc
+		dey
+		lda (iaccl), y
+		sta faccmb
+		dey
+		lda (iaccl), y
+		sta faccs
+		tay
+		lda (iaccl)
+		sta faccx
+		bne varfpz
+		tya
+		ora faccmb
+		ora faccmc
+		ora faccmd
+		beq varfpx
+varfpz		tya
+		ora #$80
+varfpx		sta faccma
+		lda #$ff
+		rts
+facstr		cpy #$80
+		beq facstt
+		ldy #3
+		lda (iaccl), y
+		sta clen
+		beq strrts
+		ldy #1
+		lda (iaccl), y
+		sta work + 1
+		lda (iaccl)
+		sta work
+		ldy clen
+movtos		dey
+		lda (work), y
+		sta stracc, y
+		tya
+		bne movtos
+strrts		rts
+facstt		lda iaccm;these two instructions are obsolete!
+		beq chrf
+		ldy #0
+facstu		lda (iaccl), y
+		sta stracc, y
+		eor #$0d
+		beq facstv
+		iny
+		bne facstu
+		tya
+facstv		sty clen
+		rts
+chrd		jsr intfac
+chrf		lda iaccl
+		jmp sinstr
+	;!source cbas0b

@@ -1,0 +1,655 @@
+;ACME 0.97
+;   FILE  -> CBAS07
+;   FCON converts from floating point to a string in stracc
+fconhx		tya
+		bpl fconhf
+		jsr ifix
+fconhf		ldx #0
+		ldy #0
+hexplp		lda iaccl, y
+		pha
+		and #$0f
+		sta work + 8, x
+		pla
+		lsr
+		lsr
+		lsr
+		lsr
+		inx
+		sta work + 8, x
+		inx
+		iny
+		cpy #4
+		bne hexplp
+hexlzb		dex
+		beq hexp
+		lda work + 8, x
+		beq hexlzb
+hexp		lda work + 8, x
+		cmp #$0a
+		bcc nothx
+		adc #$06
+nothx		adc #$30
+		jsr chtobf
+		dex
+		bpl hexp
+		rts
+fprta		bpl fprtc
+		lda #"-"
+		stz faccs
+		jsr chtobf
+fprtc		lda faccx
+		cmp #$81;get into range 1.0000 to 9.9999
+		bcs fprtd
+		jsr ftenfx
+		dec fprtdx
+		bra fprtc
+fcon		ldx varl + 2;flag forcing E
+		cpx #3
+		bcc fconok
+		ldx #0;Default to G format
+fconok		stx work
+		lda varl + 1
+		beq fconc
+		cmp #$0a
+		bcs fcona
+;  In G,E formats varl is no. of sig figs >0
+;  In F format it is no. of decimals and can e >=0
+		bra fconb
+fconc		cpx #2
+		beq fconb
+fcona		lda #10;enter here for str$, having set work to 0
+fconb		sta work + 1
+		sta fdigs
+		stz clen
+		stz fprtdx
+		bit printf
+		bmi fconhx
+		tya
+		bmi fconfx
+		jsr iflt
+fconfx		jsr ftst
+		bne fprta
+		lda work
+		bne fprthj
+		lda #"0"
+		jmp chtobf
+fprthj		jmp fprthh
+fprtee		jsr fone
+		bra fprte + 3
+fprtd		cmp #$84;EXPONENT OF 9.99
+		bcc fprtf;1.0 TO 7.9999 ALL OK
+		bne fprte;EXPONENT 85 OR MORE
+		lda faccma;FINE CHECK IF X=84
+		cmp #$a0
+		bcc fprtf;8.0000 TO 9.9999
+fprte		jsr ftenfq
+		inc fprtdx
+		bra fprtc
+fprtf		lda faccmg
+		sta type
+		jsr starga
+		lda fdigs
+		sta work + 1
+		ldx work
+		cpx #2
+		bne fprtfh;NOT 'F' FORMAT
+		adc fprtdx;FIX UP THE PRECISION
+		bmi fprtzr
+		sta work + 1
+		cmp #11
+		bcc fprtfh;PRECISION STILL REASONABLE
+		lda #10
+		sta work + 1
+		stz work;TREAT AS 'G' FORMAT
+fprtfh		jsr fclrb
+		lda #$a0
+		sta faccma
+		lda #$83
+		sta faccx;5.0 -> ACC
+		ldx work + 1
+		beq fprtgj
+fprtgg		jsr ftenfq
+		dex
+		bne fprtgg;create .00,,005 const
+fprtgj		jsr arga
+		jsr fldw
+		lda type
+		sta fwrkmg
+		jsr faddw1
+fprtff		lda faccx
+		cmp #$84
+		bcs fprtg
+		ror faccma;could call end of ftenfx
+		ror faccmb
+		ror faccmc
+		ror faccmd
+		ror faccmg
+		inc faccx
+		bne fprtff
+fprtg		lda faccma
+		cmp #$a0;SEE IF UNNORMALIZED
+		bcs fprtee;FIX UP IF SO
+		lda work + 1
+		bne fprth
+fprthh		cmp #1
+		beq fprtk
+fprtzr		jsr fclr
+		stz fprtdx
+		lda fdigs
+		inc
+		sta work + 1
+; THE EXPONENT IS $84, SO THE TOP DIGIT OF THE ACC IS THE FIRST DIG TO PRINT
+fprth		lda #1
+		cmp work
+		beq fprtk
+		ldy fprtdx
+		bmi fprtkk
+		cpy work + 1
+		bcs fprtk;USE SCIENTIFIC IS <1.0 OR > 10^DIGITS
+		stz fprtdx;USE F TYPE FORMAT
+		iny
+		tya
+		bne fprtk
+fprtkk		lda work
+		cmp #2
+		beq fprtkl;F FORMAT CASE
+		lda #1
+		cpy #$ff
+		bne fprtk;SET E FORMAT
+fprtkl		lda #"0"
+		jsr chtobf
+		lda #"."
+		jsr chtobf
+		lda #"0"
+fprtkm		inc fprtdx
+		beq fprtkn
+		jsr chtobf
+		bra fprtkm
+fprtkn		lda #$80
+fprtk		sta fprtwn
+fprti		jsr fprtnn
+		dec fprtwn
+		bne fprtl
+		lda #"."
+		jsr chtobf
+fprtl		dec work + 1
+		bne fprti
+		ldy work
+		dey
+		beq fprttx
+		dey
+		beq fprtty + 2
+		ldy clen
+fprttz		dey
+		lda stracc, y;inspect for and remove trailing zeroes
+		cmp #"0"
+		beq fprttz
+		cmp #"."
+		beq fprtty
+		iny
+fprtty		sty clen
+		lda fprtdx
+		beq fprtx;EXPONENT=0
+fprttx		lda #"E"
+		jsr chtobf
+		lda fprtdx
+		bpl fprtj
+		lda #"-"
+		jsr chtobf
+		sec
+		lda #0
+		sbc fprtdx
+fprtj		jsr iprt
+		lda work
+		beq fprtx
+		lda #" "
+		ldy fprtdx
+		bmi fprttw
+		jsr chtobf
+fprttw		cpx #0
+		beq chtobf
+fprtx		rts
+fprtnn		lda faccma
+		lsr
+		lsr
+		lsr
+		lsr
+		jsr fprtdg
+		lda #$f0
+		trb faccma
+;   GET NEXT DIGIT READY by multiplying mantissa by 10
+;   MULTIPLY FACC BY 10
+ftenx		pha
+		ldx faccmd
+		lda faccma
+		pha
+		lda faccmb
+		pha
+		lda faccmc
+		pha
+		lda faccmg
+		asl
+		rol faccmd
+		rol faccmc
+		rol faccmb
+		rol faccma
+		asl
+		rol faccmd
+		rol faccmc
+		rol faccmb
+		rol faccma
+		adc faccmg
+		sta faccmg
+		txa
+		adc faccmd
+		sta faccmd
+		pla
+		adc faccmc
+		sta faccmc
+		pla
+		adc faccmb
+		sta faccmb
+		pla
+		adc faccma
+		asl faccmg
+		rol faccmd
+		rol faccmc
+		rol faccmb
+		rol
+		sta faccma
+		pla
+		rts
+;   PRINT AC IN DECIMAL UNSIGNED
+iprt		ldx #$ff
+		sec
+iprta		inx
+		sbc #10
+		bcs iprta
+		adc #10
+		pha
+		txa
+		beq iprtb
+		jsr fprtdg
+iprtb		pla
+fprtdg		ora #"0"
+chtobf		phx
+		ldx clen
+		sta stracc, x
+		plx
+		inc clen
+		rts
+;   READ ROUTINES
+frddxx		jsr ftstz;clear rest of FACC
+		clc
+		lda #$ff
+		rts
+frdd		stz faccma
+		stz faccmb
+		stz faccmc
+		stz faccmd
+		stz faccmg
+		stz frdddp;DECIMAL POINT FLAG
+		stz frdddx;DECIMAL EXPONENT
+		cmp #".";Y pointing to this character
+		beq frdddd;LEADING DECIMAL POINT
+		cmp #$3a
+		bcs frddxx
+		sbc #$2f
+		bmi frddxx
+		sta faccmg
+		iny
+		lda (aeline), y
+		cmp #$3a
+		bcs frddd
+		sbc #$2f
+		bcc frddc + 1
+		sta faccs
+		lda faccmg
+		asl
+		asl
+		adc faccmg
+		asl
+		adc faccs
+		sta faccmg
+frddc		iny
+		lda (aeline), y
+		cmp #"."
+		bne frddd
+frdddd		lda frdddp;SEEN BEFORE?
+		bne frddq;SECOND ONE IS END OF NUMBER
+		inc frdddp;SET FLAG
+		bra frddc;GET MORE CHARS
+frddd		cmp #"E"
+		beq frddex;START OF EXPONENT
+		cmp #$3a
+		bcs frddq
+		sbc #$2f
+		bcc frddq;END OF NUMBER
+		ldx faccma
+		cpx #$18
+		bcc frdde;LENGTH OK
+		ldx frdddp
+		bne frddc;JUST IGNORE IF AFTER .
+		inc frdddx;OTHERWISE INC TENS
+		bra frddc
+frdde		ldx frdddp
+		beq frddf;NO . YET
+		dec frdddx
+frddf		jsr ftenx;MULTIPLY MANTISSA (carry!!!!!)
+		adc faccmg
+		sta faccmg
+		bcc frddc
+		inc faccmd
+		bne frddc
+		inc faccmc
+		bne frddc
+		inc faccmb
+		bne frddc
+		inc faccma
+		bra frddc
+frddex		jsr irdd
+		adc frdddx
+		sta frdddx
+frddq		sty aecur
+		lda frdddx
+		ora frdddp
+		beq frint
+		jsr ftst;WAS IT ZERO?
+		beq frddzz;IF SO EXIT AT ONCE
+frfp		lda #$a8
+		sta faccx
+		stz faccxh
+		stz faccs
+		jsr fnrm
+;   NOW I HAVE TO MULT OR DIV BY POWER OF TEN GIVEN IN FRDDDX
+		lda frdddx
+		bmi frddm
+		beq frddz
+frddp		jsr ftenfx;TIMES 10.0
+		dec frdddx
+		bne frddp
+		bra frddz
+frddm		jsr ftenfq;DIVIDE 10.0
+		inc frdddx
+		bne frddm
+frddz		jsr ftidy;ROUND, CHECK OVERFLOW
+frddzz		sec
+		lda #$ff
+		rts
+frint		lda faccmb
+		sta iacch
+		and #$80
+		ora faccma
+		bne frfp
+		lda faccmg
+		sta iaccl
+		lda faccmd
+		sta iaccm
+		lda faccmc
+		sta iaccn
+		lda #$40
+		sec
+		rts
+irddb		jsr irddc
+		eor #$ff
+		sec
+		rts
+irdd		iny
+		lda (aeline), y
+		cmp #"-"
+		beq irddb
+		cmp #"+"
+		bne irdda
+irddc		iny
+		lda (aeline), y
+irdda		cmp #$3a
+		bcs irddow
+		sbc #$2f
+		bcc irddow
+		sta frddw
+		iny
+		lda (aeline), y
+		cmp #$3a
+		bcs irddq
+		sbc #$2f
+		bcc irddq
+		iny
+		sta ftmpma
+		lda frddw
+		asl
+		asl
+		adc frddw
+		asl
+		adc ftmpma
+		rts
+irddq		lda frddw
+		clc
+		rts
+irddow		lda #0
+		clc
+		rts
+;   FTST SETS N,Z FLAGS ON ACC, TIDIES UP AC IF ZERO
+ftst		lda faccma
+		ora faccmb
+		ora faccmc
+		ora faccmd
+		ora faccmg
+		beq ftstz;IT IS ZERO
+		lda faccs
+		bne ftstr
+		inc;A was 0 so = 1. NEEDED TO FORCE..
+		rts;.. NONZERO IF SIGN BYTE
+ftstz		stz faccs
+		stz faccx
+		stz faccxh;STANDARD STATE ZERO
+ftstr		rts
+ftow		lda faccs
+		sta fwrks
+		lda faccx
+		sta fwrkx
+		lda faccma
+		sta fwrkma
+		lda faccmb
+		sta fwrkmb
+		lda faccmc
+		sta fwrkmc
+		lda faccmd
+		sta fwrkmd
+		lda faccmg
+		sta fwrkmg
+		rts
+ftowas		jsr ftow
+fasrw		lsr fwrkma
+		ror fwrkmb
+		ror fwrkmc
+		ror fwrkmd
+		ror fwrkmg
+		rts
+;   MULT AC BY 10.0
+;   FX:=FX+3
+;   FW:=FACC
+;   FW:=FW>>2
+;   FACC:=FACC+FW
+;   IF CARRY THEN $(
+;     FACC:=FACC>>1;
+;     FX:=FX+1 $)
+ftenfx		clc
+		lda faccx
+		adc #3
+		sta faccx
+		bcc ftenfa
+		inc faccxh
+ftenfa		jsr ftowas;COPY TO W
+		jsr fasrw
+fplwf;    ADD WRK+CY TO ACC, LEAVE RESULT IN ACC, DON'T DISTURB WRK
+		lda faccmg
+		adc fwrkmg
+		sta faccmg
+		lda faccmd
+		adc fwrkmd
+		sta faccmd
+		lda faccmc
+		adc fwrkmc
+		sta faccmc
+		lda faccmb
+		adc fwrkmb
+		sta faccmb
+		lda faccma
+		adc fwrkma
+		sta faccma
+;   CY IS SET ON CARRY OUT OF FACCMA AND FWRKMA
+frenrm		bcc frenx
+		ror faccma
+		ror faccmb
+		ror faccmc
+		ror faccmd
+		ror faccmg
+		inc faccx
+		bne frenx
+		inc faccxh
+frenx		rts
+;   FTENFQ DIVIDE AC BY 10.0
+;   FX:=FX-4; WRK:=ACC; WRK:=WRK>>1; ACC:=ACC+WRK
+;   ADJUST IF CARRY
+;   WRK:=ACC; WRK:=WRK>>4; ACC:=ACC+WRK
+;   ADJUST IF CARRY
+;   WRK:=ACC>>8; ACC:=ACC>>8
+;   ADJUST IF CARRY
+;   WRK:=ACC>>16; ACC:=ACC+WRK
+;   ADJUST IF CARRY
+;   ACC:=ACC+(ACC>>32)
+;   ADJUST IF CARRY
+ftenfq		sec
+		lda faccx
+		sbc #4
+		sta faccx
+		bcs ftenb
+		dec faccxh
+ftenb		jsr ftowas
+		jsr fplwf; * 0.00011
+		jsr ftowas
+		jsr fasrw
+		jsr fasrw
+		jsr fasrw
+		jsr fplwf;* 0.000110011
+		stz fwrkma
+		lda faccma
+		sta fwrkmb
+		lda faccmb
+		sta fwrkmc
+		lda faccmc
+		sta fwrkmd
+		lda faccmd
+		sta fwrkmg
+		lda faccmg
+		rol;SET CARRY BIT PROPERLY
+		jsr fplwf;OK TO 16 BITS
+		stz fwrkmb;FWRKMA already 0
+		lda faccma
+		sta fwrkmc
+		lda faccmb
+		sta fwrkmd
+		lda faccmc
+		sta fwrkmg
+		lda faccmd
+		rol
+		jsr fplwf
+		lda faccmb
+		rol
+		lda faccma
+		adc faccmg
+		sta faccmg
+		bcc fplny
+		inc faccmd
+		bne fplny
+fplnfi		inc faccmc
+		bne fplny
+		inc faccmb
+		bne fplny
+		inc faccma
+		beq frenrm + 2;carry set
+fplny		rts
+fldw		stz fwrkmg
+		ldy #4
+		lda (argp), y
+		sta fwrkmd
+		dey
+		lda (argp), y
+		sta fwrkmc
+		dey
+		lda (argp), y
+		sta fwrkmb
+		dey
+		lda (argp), y
+		sta fwrks
+		tay
+		lda (argp)
+		sta fwrkx
+		bne fldwz
+		tya
+		ora fwrkmb
+		ora fwrkmc
+		ora fwrkmd
+		beq fldwx
+fldwz		tya
+		ora #$80
+fldwx		sta fwrkma
+		rts
+stargc		lda #<fwsc
+		bra fstap
+starga		lda #<fwsa
+fstap		sta argp
+		lda #> fwsa
+		sta argp + 1
+;   FSTA STORES ACC
+fsta		lda faccx
+		sta (argp)
+		ldy #1
+		lda faccs;TIDY UP SIGN BYTE
+		eor faccma
+		and #$80
+		eor faccma
+		sta (argp), y
+		lda faccmb
+		iny
+		sta (argp), y
+		lda faccmc
+		iny
+		sta (argp), y
+		lda faccmd
+		iny
+		sta (argp), y
+		rts
+ldarga		lda #<fwsa
+fldarg		sta argp
+		lda #> fwsa
+		sta argp + 1
+flda		stz faccmg
+		stz faccxh
+		ldy #4
+		lda (argp), y
+		sta faccmd
+		dey
+		lda (argp), y
+		sta faccmc
+		dey
+		lda (argp), y
+		sta faccmb
+		dey
+		lda (argp), y
+		sta faccs
+		tay
+		lda (argp)
+		sta faccx
+		bne fldaz
+		tya
+		ora faccmb
+		ora faccmc
+		ora faccmd
+		beq fldax
+fldaz		tya
+		ora #$80
+fldax		sta faccma
+		rts
+	;!source cbas08
